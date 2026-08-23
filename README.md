@@ -1,6 +1,6 @@
 # Quran Words - قاعدة بيانات كلمات القرآن الكريم
 
-قاعدة بيانات احترافية لجميع كلمات القرآن الكريم مع الترجمة الإنجليزية والتحليل الصرفي.
+قاعدة بيانات احترافية لجميع كلمات القرآن الكريم مع الترجمة الإنجليزية والتحليل الصرفي والمعاني العربية.
 
 ## 📊 إحصائيات
 
@@ -8,8 +8,11 @@
 |-------|-------|
 | 114 | سورة |
 | 6,236 | آية |
-| 77,429 | كلمة (مع التكرار) |
+| 77,429 | موضع كلمة (مع التكرار) |
 | 21,295 | كلمة فريدة |
+| ~1,700 | جذر لغوي (مدقق من المتن النحوي) |
+| 77,429 | تحليل صرفي (لكل موضع كلمة) |
+| 56,606 | مدخل معجمي للمعاني العربية |
 
 ## 📁 هيكل المشروع
 
@@ -19,33 +22,38 @@ quran-words/
 ├── LICENSE                   # ترخيص MIT
 ├── .gitignore               # ملفات تجاهل Git
 ├── data/
-│   └── quran_words.db       # قاعدة البيانات SQLite
+│   ├── quran_words.db       # قاعدة البيانات SQLite
+│   ├── quranic_corpus_morphology.json   # بيانات المتن النحوي المحللة
+│   ├── arabic_roots.json    # معاني الجذور العربية
+│   └── quranic-corpus-morphology-0.4.txt # الملف الخام للمتن
 ├── scripts/
-│   ├── download_quran.py    # سكربت تحميل البيانات
-│   └── build_db.py          # سكربت بناء القاعدة
+│   ├── download_quran.py    # سكربت تحميل الكلمات من Quran.com API
+│   ├── fetch_corpus.py      # سكربت جلب المتن النحوي (Quranic Arabic Corpus)
+│   ├── fetch_arabic_roots.py# سكربت جلب معاني الجذور العربية
+│   ├── build_db.py          # سكربت بناء القاعدة (المرحلة 1)
+│   └── build_morphology.py  # سكربت التحليل الصرفي والمعاني (المرحلة 2)
 └── examples/
     └── queries.sql           # أمثلة على الاستعلامات
 ```
 
 ## 🚀 البدء السريع
 
-### تحميل قاعدة البيانات
 ```bash
-# استنساخ المستودع
-git clone https://github.com/yourusername/quran-words.git
-cd quran-words
-
 # استخدام قاعدة البيانات مباشرة
 sqlite3 data/quran_words.db
 ```
 
-### بناء القاعدة من الصفر
-```bash
-# تحميل البيانات من Quran.com
-python scripts/download_quran.py
+### بناء القاعدة من الصفر (خطوتان)
 
-# بناء قاعدة البيانات
-python scripts/build_db.py
+```bash
+# 1) تحميل البيانات:
+python scripts/download_quran.py      # كلمات القرآن مع الترجمة (Quran.com)
+python scripts/fetch_corpus.py        # المتن النحوي (Quranic Arabic Corpus)
+python scripts/fetch_arabic_roots.py  # معاني الجذور (المعاجم الكلاسيكية)
+
+# 2) بناء القاعدة:
+python scripts/build_db.py            # المرحلة 1: السور والآيات والكلمات
+python scripts/build_morphology.py    # المرحلة 2: الجذور والصرف والمعاني
 ```
 
 ## 📋 هيكل قاعدة البيانات
@@ -69,7 +77,7 @@ python scripts/build_db.py
 | text_uthmani | TEXT | نص الآية (الرسم العثماني) |
 | word_count | INTEGER | عدد الكلمات |
 
-### جدول `words` - الكلمات
+### جدول `words` - الكلمات الفريدة
 | العمود | النوع | الوصف |
 |--------|-------|-------|
 | id | INTEGER | معرف فريد |
@@ -77,97 +85,120 @@ python scripts/build_db.py
 | text_clean | TEXT | الكلمة بدون تشكيل |
 | translation | TEXT | الترجمة الإنجليزية |
 | transliteration | TEXT | الترقيم اللاتيني |
-| root_id | INTEGER | معرف الجذر |
+
+### جدول `word_ayah` - علاقات الكلمات-الآيات
+| العمود | النوع | الوصف |
+|--------|-------|-------|
+| id | INTEGER | معرف فريد |
+| word_id | INTEGER | معرف الكلمة |
+| ayah_id | INTEGER | معرف الآية |
+| position | INTEGER | ترتيب الكلمة في الآية |
+| location | TEXT | موقع المتن النحوي (سورة:آية:كلمة) |
 
 ### جدول `roots` - الجذور
 | العمود | النوع | الوصف |
 |--------|-------|-------|
 | id | INTEGER | معرف فريد |
-| root | TEXT | الجذر العربي |
+| root | TEXT | الجذر العربي (مدقق من المتن النحوي) |
 
-### جدول `word_ayah` - علاقات الكلمات-الآيات
+### جدول `lemmas` - الأصول اللغوية
 | العمود | النوع | الوصف |
 |--------|-------|-------|
-| word_id | INTEGER | معرف الكلمة |
-| ayah_id | INTEGER | معرف الآية |
-| position | INTEGER | ترتيب الكلمة في الآية |
+| id | INTEGER | معرف فريد |
+| lemma_ar | TEXT | الأصل اللغوي بالعربية |
+| lemma_bw | TEXT | الأصل بترقيم Buckwalter |
+
+### جدول `word_morphology` - التحليل الصرفي (لكل موضع)
+| العمود | النوع | الوصف |
+|--------|-------|-------|
+| id | INTEGER | معرف فريد |
+| word_ayah_id | INTEGER | موضع الكلمة |
+| pos | TEXT | نوع الكلمة (N, V, ADJ, P...) |
+| form | TEXT | الوزن الصرفي (I-XV) |
+| aspect | TEXT | الصيغة (PERF/IMPF/IMPV) |
+| mood | TEXT | الحالة (JUS/SUB...) |
+| voice | TEXT | المعلوم/المجهول (ACT/PASS) |
+| person / gender / number | TEXT | الشخص والجنس والعدد |
+| grammatical_case | TEXT | الإعراب (NOM/ACC/GEN) |
+| state | TEXT | التعريف/التنكير (DEF/INDEF) |
+| derivation | TEXT | الاشتقاق (PCPL/VN) |
+| root_id | INTEGER | الجذر |
+| lemma_id | INTEGER | الأصل اللغوي |
+| segments | TEXT | مقاطع الكلمة (سابقة/جذر/لاحقة) JSON |
+
+### جدول `root_meanings` - معاني الجذور
+| العمود | النوع | الوصف |
+|--------|-------|-------|
+| id | INTEGER | معرف فريد |
+| root_id | INTEGER | الجذر |
+| definition | TEXT | المعنى العربي |
+| book_name | TEXT | اسم المعجم (مفردات الراغب، لسان العرب...) |
+| source_url | TEXT | رابط المصدر |
+
+### جدول `sources` - المصادر
+| العمود | النوع | الوصف |
+|--------|-------|-------|
+| id | INTEGER | معرف فريد |
+| name | TEXT | اسم المصدر |
+| description | TEXT | الوصف |
+| url | TEXT | الرابط |
 
 ## 🔍 أمثلة على الاستعلامات
 
-### البحث عن كلمة محددة
 ```sql
--- البحث عن كلمة "الله" في القرآن
-SELECT w.text, w.translation, a.surah, a.ayah
+-- عرض سورة الفاتحة مع التحليل الصرفي
+SELECT a.ayah, wa.position, w.text, wm.pos, r.root, wm.form, wm.grammatical_case
 FROM word_ayah wa
 JOIN words w ON wa.word_id = w.id
 JOIN ayat a ON wa.ayah_id = a.id
-WHERE w.text_clean LIKE '%ٱلله%'
-ORDER BY a.surah, a.ayah;
-```
-
-### عرض سورة معينة
-```sql
--- عرض سورة الفاتحة كاملة
-SELECT a.ayah, wa.position, w.text, w.translation
-FROM word_ayah wa
-JOIN words w ON wa.word_id = w.id
-JOIN ayat a ON wa.ayah_id = a.id
+LEFT JOIN word_morphology wm ON wm.word_ayah_id = wa.id
+LEFT JOIN roots r ON r.id = wm.root_id
 WHERE a.surah = 1
 ORDER BY a.ayah, wa.position;
-```
 
-### البحث بالجذر
-```sql
--- البحث عن كلمات بجذر "ك ت ب"
-SELECT w.text, w.translation
-FROM words w
-JOIN roots r ON w.root_id = r.id
-WHERE r.root = 'كتب';
-```
+-- المعنى العربي لجذر "رحم" من المعاجم الكلاسيكية
+SELECT r.root, rm.book_name, rm.definition
+FROM roots r
+JOIN root_meanings rm ON rm.root_id = r.id
+WHERE r.root = 'رحم';
 
-### إحصائيات
-```sql
--- عدد الكلمات في كل سورة
-SELECT s.name_ar, s.name_en, COUNT(DISTINCT w.id) as word_count
-FROM surahs s
-JOIN ayat a ON s.id = a.surah
-JOIN word_ayah wa ON a.id = wa.ayah_id
-JOIN words w ON wa.word_id = w.id
-GROUP BY s.id
-ORDER BY s.id;
-```
-
-### أكثر الكلمات تكراراً
-```sql
--- أكثر 20 كلمة تكراراً في القرآن
-SELECT w.text, w.translation, COUNT(*) as frequency
+-- الأفعال الماضية المبنية للمجهول
+SELECT DISTINCT w.text, w.translation, r.root
 FROM word_ayah wa
 JOIN words w ON wa.word_id = w.id
-GROUP BY w.text
-ORDER BY frequency DESC
-LIMIT 20;
+JOIN word_morphology wm ON wm.word_ayah_id = wa.id
+JOIN roots r ON r.id = wm.root_id
+WHERE wm.aspect = 'PERF' AND wm.voice = 'PASS';
 ```
+
+المزيد في [examples/queries.sql](examples/queries.sql).
 
 ## 📊 مصادر البيانات
 
-- **النص العربي**: [Quran.com API](https://api.quran.com) - الرسم العثماني
-- **الترجمة الإنجليزية**: [Quran.com API](https://api.quran.com) - ترجمة كلمة بكلمة
-- **عدد الكلمات**: 77,429 كلمة في 6,236 آية
+| المصدر | البيانات | الترخيص |
+|--------|----------|---------|
+| [Quran.com API](https://api.quran.com) | النص العثماني، الترجمة والترقيم كلمة بكلمة | CC-BY-4.0 |
+| [Quranic Arabic Corpus](http://corpus.quran.com) (جامعة ليدز، v0.4) | التحليل الصرفي لكل كلمة: الجذر والأصل ونوع الكلمة والتصريف | GPL |
+| [Arabic Lexicon](http://arabiclexicon.hawramani.com) | معاني الجذور من: مفردات غريب القرآن للراغب، لسان العرب، تاج العروس، الصحاح، القاموس المحيط | GPL-3.0 |
+
+ملاحظة: بنية المتن النحوي تتطلب ذكر المصدر والرابط في أي عمل مشتق (شاهد جدول `sources`).
 
 ## 🤝 المساهمة
 
-مرحبا بك في المساهمة في هذا المشروع! يمكنك:
-- تحسين الجذور العربية
+مرحباً بك في المساهمة في هذا المشروع! يمكنك:
 - إضافة ترجمات بلغات أخرى
-- تحسين التحليل الصرفي
+- تحسين ربط الجذور بالمعاجم
+- إضافة معاجم جديدة للمعاني
 - إصلاح الأخطاء
 
 ## 📄 الترخيص
 
 هذا المشروع مرخص بموجب [MIT License](LICENSE).
 
-بيانات القرآن الكريم من [Quran.com](https://quran.com) مرخصة بموجب [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/).
+- بيانات القرآن الكريم من [Quran.com](https://quran.com) مرخصة بموجب [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/).
+- المتن النحوي [Quranic Arabic Corpus](http://corpus.quran.com) مرخص بموجب GPL (انظر [شروط الاستخدام](http://corpus.quran.com/download)).
+- بيانات المعاني من [arabic-roots](https://huggingface.co/datasets/MohamedRashad/arabic-roots) مرخصة بموجب GPL-3.0.
 
 ## 🙏 الشكر
 
-شكرا لموقع [Quran.com](https://quran.com) على توفير API مجاني لبيانات القرآن الكريم.
+شكراً لموقع [Quran.com](https://quran.com) و[Quranic Arabic Corpus](http://corpus.quran.com) على توفير بيانات مفتوحة عالية الجودة.

@@ -15,36 +15,52 @@ WHERE w.text_clean LIKE '%ٱلله%'
 ORDER BY a.surah, a.ayah
 LIMIT 20;
 
--- 2. عرض سورة معينة
--- Display a specific surah
+-- 2. عرض سورة معينة مع التحليل الصرفي
+-- Display a surah with morphological analysis
 
--- عرض سورة الفاتحة كاملة
-SELECT a.ayah, wa.position, w.text, w.translation
+-- عرض سورة الفاتحة: الكلمة + النوع + الجذر + الصيغة + الإعراب
+SELECT a.ayah, wa.position, w.text, w.translation,
+       wm.pos, r.root, wm.form, wm.aspect, wm.voice,
+       wm.gender, wm.number, wm.grammatical_case
 FROM word_ayah wa
 JOIN words w ON wa.word_id = w.id
 JOIN ayat a ON wa.ayah_id = a.id
+LEFT JOIN word_morphology wm ON wm.word_ayah_id = wa.id
+LEFT JOIN roots r ON r.id = wm.root_id
 WHERE a.surah = 1
 ORDER BY a.ayah, wa.position;
 
 -- 3. البحث بالجذر
 -- Search by root
 
--- البحث عن كلمات بجذر "ك ت ب" (كتابة)
-SELECT w.text, w.translation
-FROM words w
-JOIN roots r ON w.root_id = r.id
+-- كل الكلمات التي جذرها "كتب" مع مواقعها
+SELECT DISTINCT w.text, w.translation, r.root
+FROM word_ayah wa
+JOIN words w ON wa.word_id = w.id
+JOIN word_morphology wm ON wm.word_ayah_id = wa.id
+JOIN roots r ON r.id = wm.root_id
 WHERE r.root = 'كتب';
 
--- 4. إحصائيات عامة
+-- 4. المعنى العربي للجذر
+-- Arabic meaning of a root from classical lexicons
+
+SELECT r.root, rm.book_name, substr(rm.definition, 1, 120) as meaning
+FROM roots r
+JOIN root_meanings rm ON rm.root_id = r.id
+WHERE r.root = 'رحم'
+LIMIT 10;
+
+-- 5. إحصائيات عامة
 -- General statistics
 
--- عدد السور والآيات والكلمات
 SELECT 
     (SELECT COUNT(*) FROM surahs) as surah_count,
     (SELECT COUNT(*) FROM ayat) as ayah_count,
-    (SELECT COUNT(*) FROM words) as word_count;
+    (SELECT COUNT(*) FROM words) as word_count,
+    (SELECT COUNT(*) FROM roots) as root_count,
+    (SELECT COUNT(*) FROM word_morphology) as morphology_count;
 
--- 5. أكثر الكلمات تكراراً
+-- 6. أكثر الكلمات تكراراً
 -- Most frequent words
 
 SELECT w.text, w.translation, COUNT(*) as frequency
@@ -54,40 +70,31 @@ GROUP BY w.text
 ORDER BY frequency DESC
 LIMIT 20;
 
--- 6. كلمات في سورة محددة
--- Words in a specific surah
+-- 7. البحث الصرفي: أفعال ماضية مجهولة (مبني للمجهول)
+-- Morphological search: passive perfect verbs
 
--- كلمات سورة الرحمن
-SELECT DISTINCT w.text, w.translation
+SELECT DISTINCT w.text, w.translation, r.root, wm.form
 FROM word_ayah wa
 JOIN words w ON wa.word_id = w.id
-JOIN ayat a ON wa.ayah_id = a.id
-WHERE a.surah = 55;
+JOIN word_morphology wm ON wm.word_ayah_id = wa.id
+JOIN roots r ON r.id = wm.root_id
+WHERE wm.aspect = 'PERF' AND wm.voice = 'PASS'
+LIMIT 30;
 
--- 7. البحث عن آية بالنص
--- Search for a verse by text
+-- 8. البحث الصرفي: صيغ المبالغة وأسماء الفاعلين
+-- Active participles (اسم فاعل)
 
--- البحث عن آية تحتوي على "بسم الله"
-SELECT a.surah, a.ayah, a.text_uthmani
-FROM ayat a
-WHERE a.text_uthmani LIKE '%بِسْمِ%ٱللَّهِ%';
-
--- 8. إحصائيات السور
--- Surah statistics
-
-SELECT s.id, s.name_ar, s.name_en, s.ayah_count,
-       COUNT(DISTINCT w.id) as unique_words
-FROM surahs s
-JOIN ayat a ON s.id = a.surah
-JOIN word_ayah wa ON a.id = wa.ayah_id
+SELECT w.text, w.translation, r.root
+FROM word_ayah wa
 JOIN words w ON wa.word_id = w.id
-GROUP BY s.id
-ORDER BY s.id;
+JOIN word_morphology wm ON wm.word_ayah_id = wa.id
+JOIN roots r ON r.id = wm.root_id
+WHERE wm.derivation = 'PCPL' AND wm.pos = 'N'
+LIMIT 30;
 
 -- 9. كلمات مكية ومدنية
 -- Meccan and Medinan words
 
--- كلمات تظهر في سور مكية فقط
 SELECT w.text, w.translation
 FROM words w
 WHERE w.id IN (
@@ -106,36 +113,32 @@ AND w.id NOT IN (
 )
 LIMIT 20;
 
--- 10. تحليل طول الكلمات
--- Word length analysis
+-- 10. أكثر الجذور وروداً
+-- Most frequent roots
 
-SELECT 
-    LENGTH(w.text_clean) as word_length,
-    COUNT(*) as frequency
-FROM words w
-GROUP BY word_length
-ORDER BY word_length;
-
--- 11. كلمات تحتوي على حرف معين
--- Words containing a specific letter
-
--- كلمات تحتوي على حرف "ق"
-SELECT DISTINCT w.text, w.translation
-FROM words w
-WHERE w.text LIKE '%ق%'
+SELECT r.root, COUNT(*) as frequency
+FROM word_ayah wa
+JOIN word_morphology wm ON wm.word_ayah_id = wa.id
+JOIN roots r ON r.id = wm.root_id
+GROUP BY r.root
+ORDER BY frequency DESC
 LIMIT 20;
 
--- 12. آيات طويلة وقصيرة
--- Long and short verses
+-- 11. توزيع أنواع الكلمات (أجزاء الكلام)
+-- Part-of-speech distribution
 
--- أطول 10 آيات
-SELECT a.surah, a.ayah, a.text_uthmani, a.word_count
-FROM ayat a
-ORDER BY a.word_count DESC
-LIMIT 10;
+SELECT pos, COUNT(*) as count
+FROM word_morphology
+GROUP BY pos
+ORDER BY count DESC;
 
--- أقصر 10 آيات
-SELECT a.surah, a.ayah, a.text_uthmani, a.word_count
-FROM ayat a
-ORDER BY a.word_count ASC
-LIMIT 10;
+-- 12. أفعال بوزن (فاعَل) من الجذر "عمل"
+-- Verbs of form III from root "عمل"
+
+SELECT DISTINCT w.text, w.translation, wm.form, wm.aspect
+FROM word_ayah wa
+JOIN words w ON wa.word_id = w.id
+JOIN word_morphology wm ON wm.word_ayah_id = wa.id
+JOIN roots r ON r.id = wm.root_id
+WHERE r.root = 'عمل'
+ORDER BY wm.form;

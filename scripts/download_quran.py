@@ -3,6 +3,7 @@
 Download Quran word-by-word data from Quran.com API.
 Downloads all 114 surahs with word-by-word translations.
 """
+
 import json
 import time
 import urllib.request
@@ -133,12 +134,12 @@ SURAH_INFO = [
 def fetch_json(url, retries=3):
     for attempt in range(retries):
         try:
-            req = urllib.request.Request(url, headers={'User-Agent': 'QuranDB/1.0'})
+            req = urllib.request.Request(url, headers={"User-Agent": "QuranDB/1.0"})
             with urllib.request.urlopen(req, timeout=30) as resp:
-                return json.loads(resp.read().decode('utf-8'))
+                return json.loads(resp.read().decode("utf-8"))
         except Exception as e:
             if attempt < retries - 1:
-                time.sleep(2 ** attempt)
+                time.sleep(2**attempt)
             else:
                 print(f"  FAILED: {url} - {e}", file=sys.stderr)
                 return None
@@ -146,11 +147,11 @@ def fetch_json(url, retries=3):
 
 def download_surah(surah_num):
     """Download all ayahs for a surah with word-by-word data."""
-    url = f"{BASE_URL}/verses/by_chapter/{surah_num}?language=en&words=true&per_page=999&fields=text_uthmani&word_fields=text_uthmani,translation,transliteration"
+    url = f"{BASE_URL}/verses/by_chapter/{surah_num}?language=en&words=true&per_page=999&fields=text_uthmani&word_fields=text_uthmani,translation,transliteration,location"
     data = fetch_json(url)
-    if not data or 'verses' not in data:
+    if not data or "verses" not in data:
         return None
-    return data['verses']
+    return data["verses"]
 
 
 def main():
@@ -162,7 +163,11 @@ def main():
 
     for i, (surah_name, ayah_count, rev_type) in enumerate(SURAH_INFO):
         surah_num = i + 1
-        print(f"[{surah_num:3d}/114] {surah_name} ({ayah_count} ayahs)...", end=" ", flush=True)
+        print(
+            f"[{surah_num:3d}/114] {surah_name} ({ayah_count} ayahs)...",
+            end=" ",
+            flush=True,
+        )
 
         verses = download_surah(surah_num)
         if not verses:
@@ -171,19 +176,20 @@ def main():
 
         surah_words = 0
         for verse in verses:
-            verse_num = verse['verse_number']
-            words = verse.get('words', [])
+            verse_num = verse["verse_number"]
+            words = verse.get("words", [])
             for word in words:
-                if word.get('char_type_name') != 'word':
+                if word.get("char_type_name") != "word":
                     continue
                 word_data = {
-                    'surah': surah_num,
-                    'ayah': verse_num,
-                    'position': word['position'],
-                    'text': word.get('text_uthmani', ''),
-                    'translation': word.get('translation', {}).get('text', ''),
-                    'transliteration': word.get('transliteration', {}).get('text', ''),
-                    'verse_text': verse.get('text_uthmani', ''),
+                    "surah": surah_num,
+                    "ayah": verse_num,
+                    "position": word["position"],
+                    "location": word.get("location", ""),
+                    "text": word.get("text_uthmani", ""),
+                    "translation": word.get("translation", {}).get("text", ""),
+                    "transliteration": word.get("transliteration", {}).get("text", ""),
+                    "verse_text": verse.get("text_uthmani", ""),
                 }
                 all_data.append(word_data)
                 surah_words += 1
@@ -194,7 +200,7 @@ def main():
 
     # Save to file
     output_path = "/home/ahmed/0/quran/quran_words_wbw.json"
-    with open(output_path, 'w', encoding='utf-8') as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         json.dump(all_data, f, ensure_ascii=False, indent=2)
 
     print(f"\n=== Done! ===")

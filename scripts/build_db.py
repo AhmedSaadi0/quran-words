@@ -1,14 +1,22 @@
 #!/usr/bin/env python3
 """
-Create the final Quran Words SQLite database with proper relational structure.
-Tables: surahs, ayat, words, word_ayah, roots, word_roots, morphological_forms, sources, word_sources
-"""
-import json
-import sqlite3
-import re
-import unicodedata
+Create the base Quran Words SQLite database with proper relational structure.
 
-DB_PATH = "/home/ahmed/0/quran/quran_words.db"
+Stage 1 of the pipeline: builds surahs, ayat, words, word_ayah from the
+Quran.com word-by-word JSON. Morphological analysis and Arabic meanings are
+added in stage 2 by scripts/build_morphology.py.
+
+Tables (stage 1): surahs, ayat, words, word_ayah, sources
+Tables (stage 2, by build_morphology.py): roots, lemmas, word_morphology,
+root_meanings, word_sources
+"""
+
+import json
+import re
+import sqlite3
+
+BASE_DIR = "/home/ahmed/0/quran/quran-words"
+DB_PATH = f"{BASE_DIR}/data/quran_words.db"
 DATA_PATH = "/home/ahmed/0/quran/quran_words_wbw.json"
 
 # Surah info: (name_ar, name_en, ayah_count, revelation_type, juz_start)
@@ -132,44 +140,34 @@ SURAH_INFO = [
 
 def strip_diacritics(text):
     """Remove Arabic diacritics (tashkeel) from text."""
-    diacritics = re.compile(r'[\u0617-\u061a\u064b-\u0652\u0656-\u065f\u0670\u06d6-\u06dc\u06df-\u06e4\u06e7\u06e8\u06ea-\u06ed]')
-    return diacritics.sub('', text)
-
-
-def extract_root(word_text):
-    """
-    Simple heuristic to extract root from a word.
-    This is a basic implementation - a proper one would need a morphological analyzer.
-    """
-    # Remove diacritics
-    clean = strip_diacritics(word_text)
-    # Remove common prefixes: ال, وا, بت, كف, لام, نون
-    # This is very simplified
-    return clean
+    diacritics = re.compile(
+        r"[\u0617-\u061a\u064b-\u0652\u0656-\u065f\u0670\u06d6-\u06dc\u06df-\u06e4\u06e7\u06e8\u06ea-\u06ed]"
+    )
+    return diacritics.sub("", text)
 
 
 def create_database():
-    """Create the SQLite database with all tables."""
+    """Create the SQLite database with all tables (stage 1)."""
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
 
-    # Drop existing tables
-    c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+    c.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+    )
     tables = [row[0] for row in c.fetchall()]
     for table in tables:
         c.execute(f"DROP TABLE IF EXISTS {table}")
 
-    # Create tables
-    c.execute('''CREATE TABLE surahs (
+    c.execute("""CREATE TABLE surahs (
         id INTEGER PRIMARY KEY,
         name_ar TEXT NOT NULL,
         name_en TEXT NOT NULL,
         ayah_count INTEGER NOT NULL,
         revelation_type TEXT NOT NULL,
         juz_start INTEGER NOT NULL
-    )''')
+    )""")
 
-    c.execute('''CREATE TABLE ayat (
+    c.execute("""CREATE TABLE ayat (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         surah INTEGER NOT NULL,
         ayah INTEGER NOT NULL,
@@ -178,68 +176,87 @@ def create_database():
         word_count INTEGER,
         FOREIGN KEY (surah) REFERENCES surahs(id),
         UNIQUE(surah, ayah)
-    )''')
+    )""")
 
-    c.execute('''CREATE TABLE words (
+    c.execute("""CREATE TABLE words (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         text TEXT NOT NULL,
         text_clean TEXT,
         translation TEXT,
         transliteration TEXT,
-        root_id INTEGER,
-        position_in_ayah INTEGER,
-        FOREIGN KEY (root_id) REFERENCES roots(id)
-    )''')
+        position_in_ayah INTEGER
+    )""")
 
-    c.execute('''CREATE TABLE roots (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        root TEXT NOT NULL UNIQUE
-    )''')
-
-    c.execute('''CREATE TABLE word_ayah (
+    c.execute("""CREATE TABLE word_ayah (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         word_id INTEGER NOT NULL,
         ayah_id INTEGER NOT NULL,
         position INTEGER NOT NULL,
+        location TEXT,
         FOREIGN KEY (word_id) REFERENCES words(id),
         FOREIGN KEY (ayah_id) REFERENCES ayat(id),
         UNIQUE(word_id, ayah_id, position)
-    )''')
+    )""")
 
-    c.execute('''CREATE TABLE word_roots (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        word_id INTEGER NOT NULL,
-        root_id INTEGER NOT NULL,
-        FOREIGN KEY (word_id) REFERENCES words(id),
-        FOREIGN KEY (root_id) REFERENCES roots(id),
-        UNIQUE(word_id, root_id)
-    )''')
-
-    c.execute('''CREATE TABLE morphological_forms (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        word_id INTEGER NOT NULL,
-        form_type TEXT,
-        form_detail TEXT,
-        FOREIGN KEY (word_id) REFERENCES words(id)
-    )''')
-
-    c.execute('''CREATE TABLE sources (
+    c.execute("""CREATE TABLE sources (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         description TEXT,
         url TEXT
-    )''')
+    )""")
 
-    c.execute('''CREATE TABLE word_sources (
+    c.execute("""CREATE TABLE roots (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        root TEXT NOT NULL UNIQUE
+    )""")
+
+    c.execute("""CREATE TABLE lemmas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        lemma_ar TEXT UNIQUE,
+        lemma_bw TEXT
+    )""")
+
+    c.execute("""CREATE TABLE word_morphology (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        word_ayah_id INTEGER NOT NULL UNIQUE,
+        pos TEXT,
+        form TEXT,
+        aspect TEXT,
+        mood TEXT,
+        voice TEXT,
+        person TEXT,
+        gender TEXT,
+        number TEXT,
+        grammatical_case TEXT,
+        state TEXT,
+        derivation TEXT,
+        special TEXT,
+        root_id INTEGER,
+        lemma_id INTEGER,
+        segments TEXT,
+        FOREIGN KEY (word_ayah_id) REFERENCES word_ayah(id),
+        FOREIGN KEY (root_id) REFERENCES roots(id),
+        FOREIGN KEY (lemma_id) REFERENCES lemmas(id)
+    )""")
+
+    c.execute("""CREATE TABLE root_meanings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        root_id INTEGER NOT NULL,
+        definition TEXT,
+        book_name TEXT,
+        source_url TEXT,
+        FOREIGN KEY (root_id) REFERENCES roots(id)
+    )""")
+
+    c.execute("""CREATE TABLE word_sources (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         word_id INTEGER NOT NULL,
         source_id INTEGER NOT NULL,
         FOREIGN KEY (word_id) REFERENCES words(id),
         FOREIGN KEY (source_id) REFERENCES sources(id),
         UNIQUE(word_id, source_id)
-    )''')
+    )""")
 
-    # Create indexes for better query performance
     c.execute("CREATE INDEX idx_words_text ON words(text)")
     c.execute("CREATE INDEX idx_words_text_clean ON words(text_clean)")
     c.execute("CREATE INDEX idx_words_translation ON words(translation)")
@@ -247,6 +264,7 @@ def create_database():
     c.execute("CREATE INDEX idx_ayat_surah_ayah ON ayat(surah, ayah)")
     c.execute("CREATE INDEX idx_word_ayah_word ON word_ayah(word_id)")
     c.execute("CREATE INDEX idx_word_ayah_ayah ON word_ayah(ayah_id)")
+    c.execute("CREATE INDEX idx_word_ayah_location ON word_ayah(location)")
     c.execute("CREATE INDEX idx_roots_root ON roots(root)")
 
     conn.commit()
@@ -257,191 +275,120 @@ def populate_database(conn, data):
     """Populate the database with word-by-word data."""
     c = conn.cursor()
 
-    # Insert surahs
     print("Inserting surahs...")
     for i, (name_ar, name_en, ayah_count, rev_type, juz_start) in enumerate(SURAH_INFO):
-        c.execute("INSERT INTO surahs (id, name_ar, name_en, ayah_count, revelation_type, juz_start) VALUES (?, ?, ?, ?, ?, ?)",
-                  (i + 1, name_ar, name_en, ayah_count, rev_type, juz_start))
+        c.execute(
+            "INSERT INTO surahs (id, name_ar, name_en, ayah_count, revelation_type, juz_start) VALUES (?, ?, ?, ?, ?, ?)",
+            (i + 1, name_ar, name_en, ayah_count, rev_type, juz_start),
+        )
 
-    # Insert sources
-    c.execute("INSERT INTO sources (name, description, url) VALUES (?, ?, ?)",
-              ("Quran.com API", "Quran word-by-word translation data", "https://api.quran.com"))
+    c.execute(
+        "INSERT INTO sources (name, description, url) VALUES (?, ?, ?)",
+        (
+            "Quran.com API",
+            "Quran word-by-word translation data (CC-BY-4.0)",
+            "https://api.quran.com",
+        ),
+    )
     source_id = c.lastrowid
 
-    # Collect unique words and their translations
     print("Processing words...")
-    word_map = {}  # text -> {id, translation, transliteration}
-    ayah_map = {}  # (surah, ayah) -> ayah_id
-    root_map = {}  # root_text -> root_id
-
+    word_map = {}
     for w in data:
-        text = w['text']
-        translation = w['translation']
-        transliteration = w['transliteration']
-
+        text = w["text"]
         if text not in word_map:
-            # Clean text (remove diacritics for searching)
-            text_clean = strip_diacritics(text)
+            c.execute(
+                "INSERT INTO words (text, text_clean, translation, transliteration, position_in_ayah) VALUES (?, ?, ?, ?, ?)",
+                (
+                    text,
+                    strip_diacritics(text),
+                    w["translation"],
+                    w["transliteration"],
+                    w["position"],
+                ),
+            )
+            word_map[text] = c.lastrowid
+            c.execute(
+                "INSERT INTO word_sources (word_id, source_id) VALUES (?, ?)",
+                (word_map[text], source_id),
+            )
 
-            # Extract root (simple heuristic)
-            root_text = extract_root(text)
-            if root_text not in root_map:
-                c.execute("INSERT INTO roots (root) VALUES (?)", (root_text,))
-                root_map[root_text] = c.lastrowid
-            root_id = root_map[root_text]
-
-            c.execute("INSERT INTO words (text, text_clean, translation, transliteration, root_id, position_in_ayah) VALUES (?, ?, ?, ?, ?, ?)",
-                      (text, text_clean, translation, transliteration, root_id, w['position']))
-            word_id = c.lastrowid
-            word_map[text] = {
-                'id': word_id,
-                'translation': translation,
-                'transliteration': transliteration
-            }
-
-            # Link word to source
-            c.execute("INSERT INTO word_sources (word_id, source_id) VALUES (?, ?)",
-                      (word_id, source_id))
-
-    # Insert ayat and link words
     print("Inserting ayat and linking words...")
-    ayah_data = {}  # (surah, ayah) -> {text_uthmani, word_count, words}
-
+    ayah_data = {}
     for w in data:
-        key = (w['surah'], w['ayah'])
+        key = (w["surah"], w["ayah"])
         if key not in ayah_data:
             ayah_data[key] = {
-                'text_uthmani': w.get('verse_text', ''),
-                'word_count': 0,
-                'words': []
+                "text_uthmani": w.get("verse_text", ""),
+                "word_count": 0,
+                "words": [],
             }
-        ayah_data[key]['word_count'] += 1
-        ayah_data[key]['words'].append(w)
+        ayah_data[key]["word_count"] += 1
+        ayah_data[key]["words"].append(w)
 
-    progress_step = len(ayah_data) // 20
+    progress_step = max(1, len(ayah_data) // 20)
     for i, ((surah, ayah), ayah_info) in enumerate(ayah_data.items()):
         if (i + 1) % progress_step == 0:
             print(f"  Progress: {i + 1}/{len(ayah_data)} ayat")
 
-        c.execute("INSERT INTO ayat (surah, ayah, text_uthmani, word_count) VALUES (?, ?, ?, ?)",
-                  (surah, ayah, ayah_info['text_uthmani'], ayah_info['word_count']))
+        c.execute(
+            "INSERT INTO ayat (surah, ayah, text_uthmani, word_count) VALUES (?, ?, ?, ?)",
+            (surah, ayah, ayah_info["text_uthmani"], ayah_info["word_count"]),
+        )
         ayah_id = c.lastrowid
 
-        # Link words to this ayah
-        for w in ayah_info['words']:
-            word_id = word_map[w['text']]['id']
-            c.execute("INSERT INTO word_ayah (word_id, ayah_id, position) VALUES (?, ?, ?)",
-                      (word_id, ayah_id, w['position']))
+        for w in ayah_info["words"]:
+            location = w.get("location") or f"{surah}:{ayah}:{w['position']}"
+            c.execute(
+                "INSERT INTO word_ayah (word_id, ayah_id, position, location) VALUES (?, ?, ?, ?)",
+                (word_map[w["text"]], ayah_id, w["position"], location),
+            )
 
     conn.commit()
     print("Database populated successfully!")
 
 
 def verify_database(conn):
-    """Verify the database contents."""
+    """Verify the stage-1 database contents."""
     c = conn.cursor()
+    print("\n=== التحقق من قاعدة البيانات (المرحلة 1) ===\n")
 
-    print("\n=== التحقق من قاعدة البيانات ===\n")
+    for table in ("surahs", "ayat", "words", "word_ayah", "sources"):
+        c.execute(f"SELECT COUNT(*) FROM {table}")
+        print(f"عدد سجلات {table}: {c.fetchone()[0]}")
 
-    # Count records
-    c.execute("SELECT COUNT(*) FROM surahs")
-    print(f"عدد السور: {c.fetchone()[0]}")
+    c.execute(
+        "SELECT COUNT(*) FROM word_ayah WHERE location IS NOT NULL AND location != ''"
+    )
+    print(f"مواضع الكلمات مع location: {c.fetchone()[0]}")
 
-    c.execute("SELECT COUNT(*) FROM ayat")
-    print(f"عدد الآيات: {c.fetchone()[0]}")
-
-    c.execute("SELECT COUNT(*) FROM words")
-    print(f"عدد الكلمات: {c.fetchone()[0]}")
-
-    c.execute("SELECT COUNT(*) FROM roots")
-    print(f"عدد الجذور: {c.fetchone()[0]}")
-
-    c.execute("SELECT COUNT(*) FROM word_ayah")
-    print(f"عدد علاقات الكلمات-الآيات: {c.fetchone()[0]}")
-
-    # Sample queries
-    print("\n=== عينات من الاستعلامات ===\n")
-
-    # Al-Fatiha
-    print("سورة الفاتحة:")
+    print("\n=== عينات ===\n")
     c.execute("""
-        SELECT a.ayah, w.text, w.translation
+        SELECT a.surah, a.ayah, wa.position, wa.location, w.text, w.translation
         FROM word_ayah wa
         JOIN words w ON wa.word_id = w.id
         JOIN ayat a ON wa.ayah_id = a.id
-        WHERE a.surah = 1
-        ORDER BY a.ayah, wa.position
+        WHERE a.surah = 1 AND a.ayah = 1
+        ORDER BY wa.position
     """)
     for row in c.fetchall():
-        print(f"  آية {row[0]}: {row[1]} -> {row[2]}")
-
-    # Words with root "م ح م د"
-    print("\nكلمات بجذر 'م ح م د':")
-    c.execute("""
-        SELECT w.text, w.translation
-        FROM words w
-        JOIN roots r ON w.root_id = r.id
-        WHERE r.root = 'محمд'
-        LIMIT 10
-    """)
-    for row in c.fetchall():
-        print(f"  {row[0]} -> {row[1]}")
-
-    # Words containing "الله"
-    print("\nكلمات تحتوي على 'الله':")
-    c.execute("""
-        SELECT DISTINCT w.text, w.translation
-        FROM words w
-        WHERE w.text LIKE '%الله%'
-        LIMIT 10
-    """)
-    for row in c.fetchall():
-        print(f"  {row[0]} -> {row[1]}")
-
-    # Ayat count per surah
-    print("\nعدد الآيات في أول 10 سور:")
-    c.execute("""
-        SELECT s.name_ar, s.ayah_count
-        FROM surahs s
-        WHERE s.id <= 10
-    """)
-    for row in c.fetchall():
-        print(f"  {row[0]}: {row[1]} آية")
-
-    # Word frequency
-    print("\nأكثر 10 كلمات تكراراً:")
-    c.execute("""
-        SELECT w.text, w.translation, COUNT(*) as cnt
-        FROM word_ayah wa
-        JOIN words w ON wa.word_id = w.id
-        GROUP BY w.text
-        ORDER BY cnt DESC
-        LIMIT 10
-    """)
-    for row in c.fetchall():
-        print(f"  {row[0]} ({row[1]}): {row[2]} مرة")
+        print(f"  {row[0]}:{row[1]}:{row[2]} [{row[3]}] {row[4]} -> {row[5]}")
 
 
 def main():
-    print("=== بناء قاعدة بيانات القرآن الكريم ===\n")
-
-    # Load data
+    print("=== بناء قاعدة بيانات القرآن الكريم (المرحلة 1) ===\n")
     print("Loading data...")
-    with open(DATA_PATH, 'r', encoding='utf-8') as f:
+    with open(DATA_PATH, "r", encoding="utf-8") as f:
         data = json.load(f)
     print(f"Loaded {len(data)} words")
 
-    # Create database
     print("\nCreating database...")
     conn = create_database()
 
-    # Populate database
     print("\nPopulating database...")
     populate_database(conn, data)
 
-    # Verify database
     verify_database(conn)
-
     conn.close()
     print(f"\nتم بناء قاعدة البيانات بنجاح: {DB_PATH}")
 
