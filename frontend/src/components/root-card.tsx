@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -53,9 +52,13 @@ export function RootCard({ root }: { root: RootItem }) {
   return (
     <Link href={`/roots/${encodeURIComponent(root.root)}`} className="group block h-full">
       <Card className="h-full py-4 transition-colors group-hover:border-foreground/30 group-hover:bg-accent/40">
-        <CardHeader className="px-4">
+        <CardHeader className="px-4 gap-1.5">
           <CardTitle className="font-quran text-2xl">{root.root}</CardTitle>
-          <CardDescription className="sr-only">جذر قرآني</CardDescription>
+          {root.gloss_ar && (
+            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+              {root.gloss_ar}
+            </p>
+          )}
         </CardHeader>
         <CardContent className="px-4 flex flex-wrap gap-1.5">
           <Badge variant="secondary" className="tabular-nums">

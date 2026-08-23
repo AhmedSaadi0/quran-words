@@ -11,6 +11,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { MasdarList, DerivativeGrid, MeaningList } from "@/components/masdar-list";
+import { TermValue } from "@/components/term-value";
+import { TABLE_FIELDS, type FieldKey } from "@/lib/morphology";
 import { api } from "@/lib/api";
 
 interface WordPageProps {
@@ -25,34 +27,28 @@ export async function generateMetadata({
   return { title: detail ? detail.word.text : `كلمة ${id}` };
 }
 
-const MORPH_ROWS: [string, keyof Morphology | "derived_case"][] = [
-  ["نوع الكلمة", "pos"],
-  ["الباب", "form"],
-  ["الزمن", "aspect"],
-  ["الحالة", "mood"],
-  ["المبني للمعلوم/المجهول", "voice"],
-  ["الضمير", "person"],
-  ["الجنس", "gender"],
-  ["العدد", "number"],
-  ["الحالة الإعرابية", "grammatical_case"],
-  ["التعريف", "state"],
-  ["الاشتقاق", "derivation"],
-];
+const MORPH_ROWS = TABLE_FIELDS;
 
 function MorphologyTable({ morph }: { morph: Morphology }) {
   const record = morph as unknown as Record<string, unknown>;
-  const entries = MORPH_ROWS
-    .map(([label, key]) => [label, record[key as string]] as const)
-    .filter(([, v]) => v !== null && v !== undefined && v !== "");
+  const entries: [string, FieldKey, string][] = [];
+  for (const { field, label } of MORPH_ROWS) {
+    const v = record[field];
+    if (v !== null && v !== undefined && v !== "") {
+      entries.push([label, field, String(v)]);
+    }
+  }
 
   if (!entries.length) return null;
 
   return (
     <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2 text-sm">
-      {entries.map(([k, v]) => (
-        <div key={k} className="flex justify-between gap-2 border-b pb-1">
-          <dt className="text-muted-foreground">{k}</dt>
-          <dd className="font-medium">{String(v)}</dd>
+      {entries.map(([label, field, value]) => (
+        <div key={label + value} className="flex justify-between gap-2 border-b pb-1">
+          <dt className="text-muted-foreground">{label}</dt>
+          <dd className="font-medium">
+            <TermValue field={field} value={value} />
+          </dd>
         </div>
       ))}
     </dl>
@@ -100,6 +96,19 @@ export default async function WordPage({ params }: WordPageProps) {
                 {root.root}
               </Badge>
             </Link>
+          </div>
+        )}
+        {root?.gloss_ar && (
+          <div className="mx-auto max-w-xl rounded-lg border bg-accent/30 px-4 py-3 space-y-1 mt-2">
+            <p className="text-[11px] font-medium text-muted-foreground">
+              المعنى السريع للجذر
+            </p>
+            <p className="font-quran text-xl leading-relaxed">{root.gloss_ar}</p>
+            {root.gloss_en && (
+              <p dir="ltr" className="text-xs text-muted-foreground text-left">
+                {root.gloss_en}
+              </p>
+            )}
           </div>
         )}
         <p className="text-sm text-muted-foreground tabular-nums">

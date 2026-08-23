@@ -1,7 +1,9 @@
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Prefetch
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.filters import OrderingFilter, SearchFilter
+from rest_framework.response import Response
 
 from core.pagination import StandardPagination
 from words.models import WordAyah
@@ -46,3 +48,35 @@ class AyahWordsViewSet(viewsets.ReadOnlyModelViewSet):
                 to_attr="prefetched_wordayah",
             )
         )
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        instances = page if page is not None else list(queryset)
+
+        # جمع جذور الصفحة الحالية دفعة واحدة لحقن المعنى السريع (لا N+1)
+        root_ids: set[int] = set()
+        for ayah in instances:
+            for wa in getattr(ayah, "prefetched_wordayah", None) or []:
+                try:
+                    wm = wa.wordmorphology
+                except ObjectDoesNotExist:
+                    continue
+                if wm.root_id:
+                    root_ids.add(wm.root_id)
+
+        gloss_map = {}
+        if root_ids:
+            from roots.models import RootGloss
+
+            gloss_map = {
+                g.root_id_id: g for g in RootGloss.objects.filter(root_id__in=root_ids)
+            }
+
+        context = dict(self.get_serializer_context(), root_glosses=gloss_map)
+        serializer = self.get_serializer(instances, many=True, context=context)
+        data = serializer.data
+
+        if page is not None:
+            return self.get_paginated_response(data)
+        return Response(data)

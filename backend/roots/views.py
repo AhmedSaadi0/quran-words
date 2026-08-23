@@ -2,11 +2,61 @@ from django.db.models import Count, Q
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.filters import OrderingFilter, SearchFilter
+from rest_framework.response import Response
 
 from derivatives.models import Derivative, Masdar
 
-from .models import Root, RootMeaning
+from .models import Root, RootGloss, RootMeaning
 from .serializers import RootMeaningSerializer, RootSerializer
+
+
+def attach_glosses(roots: list) -> None:
+    """يربط المعنى السريع بنسخ Root دفعة واحدة (يستدعى قبل التسلسل)."""
+    ids = [r.id for r in roots]
+    if not ids:
+        return
+    gloss_map = {g.root_id_id: g for g in RootGloss.objects.filter(root_id__in=ids)}
+    for r in roots:
+        r._gloss = gloss_map.get(r.id)
+
+
+def enrich_roots(roots: list) -> None:
+    """يربط العدادات والمعنى السريع بنسخ Root دفعة واحدة."""
+    if not roots:
+        return
+    ids = [r.id for r in roots]
+
+    masadir_counts = {
+        row["root_ref_id"]: row["cnt"]
+        for row in (
+            Masdar.objects.filter(root_ref_id__in=ids)
+            .values("root_ref_id")
+            .annotate(cnt=Count("id"))
+        )
+    }
+    deriv_counts = {
+        row["root_ref_id"]: row["cnt"]
+        for row in (
+            Derivative.objects.filter(root_ref_id__in=ids)
+            .values("root_ref_id")
+            .annotate(cnt=Count("id"))
+        )
+    }
+    meanings_counts = {
+        row["root_id"]: row["cnt"]
+        for row in (
+            RootMeaning.objects.filter(root_id__in=ids)
+            .values("root_id")
+            .annotate(cnt=Count("id"))
+        )
+    }
+    gloss_map = {g.root_id_id: g for g in RootGloss.objects.filter(root_id__in=ids)}
+
+    for r in roots:
+        r.masadir_count = masadir_counts.get(r.id, 0)
+        r.derivatives_count = deriv_counts.get(r.id, 0)
+        r.meanings_count = meanings_counts.get(r.id, 0)
+        r._gloss = gloss_map.get(r.id)
 
 
 class RootViewSet(viewsets.ReadOnlyModelViewSet):
@@ -28,45 +78,24 @@ class RootViewSet(viewsets.ReadOnlyModelViewSet):
         return qs
 
     def list(self, request, *args, **kwargs):
-        response = super().list(request, *args, **kwargs)
-        results = response.data.get("results")
-        if not results:
-            return response
+        # ترقيم يدوي حتى نربط العدادات والـ gloss بالكائنات قبل التسلسل
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        instances = page if page is not None else list(queryset)
 
-        ids = [item["id"] for item in results]
+        enrich_roots(instances)
 
-        masadir_counts = {
-            row["root_ref_id"]: row["cnt"]
-            for row in (
-                Masdar.objects.filter(root_ref_id__in=ids)
-                .values("root_ref_id")
-                .annotate(cnt=Count("id"))
-            )
-        }
-        deriv_counts = {
-            row["root_ref_id"]: row["cnt"]
-            for row in (
-                Derivative.objects.filter(root_ref_id__in=ids)
-                .values("root_ref_id")
-                .annotate(cnt=Count("id"))
-            )
-        }
-        meanings_counts = {
-            row["root_id"]: row["cnt"]
-            for row in (
-                RootMeaning.objects.filter(root_id__in=ids)
-                .values("root_id")
-                .annotate(cnt=Count("id"))
-            )
-        }
+        serializer = self.get_serializer(instances, many=True)
+        results = serializer.data
+        if page is not None:
+            return self.get_paginated_response(results)
+        return Response(results)
 
-        for item in results:
-            rid = item["id"]
-            item["masadir_count"] = masadir_counts.get(rid, 0)
-            item["derivatives_count"] = deriv_counts.get(rid, 0)
-            item["meanings_count"] = meanings_counts.get(rid, 0)
-
-        return response
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        enrich_roots([instance])
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
 
 
 class RootMeaningViewSet(viewsets.ReadOnlyModelViewSet):

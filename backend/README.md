@@ -48,6 +48,12 @@ CORS_ALLOW_ALL_ORIGINS = True  # قيّده في الإنتاج
 | `GET /api/surahs/` | 114 سورة |
 | `GET /api/ayat/?surah=1` | آيات سورة |
 | `GET /api/ayah-words/?surah=1` | آيات مع كلماتها وتحليلها (للصفحة المصحفية) |
+| `GET /api/morphology/` | تحليلات صرفية خام (فلترة بـ `pos` و `root`) |
+| `GET /api/sources/` | مصادر البيانات والتراخيص |
+
+> **المعنى السريع:** كل استجابات الجذور (قائمة/تفصيل/بحث) وكائن `root` في تفاصيل الكلمة
+> تتضمن `gloss_ar/gloss_en/gloss_source` — مختصراً من جدول `root_glosses`
+> (يُبنى بـ `python scripts/build_root_glosses.py` — تغطية 95% عربي، 76% إنجليزي).
 
 ### أمثلة curl (مُرمّزة)
 

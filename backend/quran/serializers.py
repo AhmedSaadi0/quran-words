@@ -71,7 +71,9 @@ class AyahWithWordsSerializer(serializers.ModelSerializer):
                 wm = wa.wordmorphology
             except WordMorphology.DoesNotExist:
                 pass
-            morph = WordMorphologySerializer(wm).data if wm else None
+            morph = (
+                WordMorphologySerializer(wm, context=self.context).data if wm else None
+            )
             result.append(
                 {
                     "word_ayah_id": wa.id,

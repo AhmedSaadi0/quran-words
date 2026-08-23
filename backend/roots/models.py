@@ -21,3 +21,23 @@ class RootMeaning(models.Model):
     class Meta:
         managed = False
         db_table = "root_meanings"
+
+
+class RootGloss(models.Model):
+    """المعنى السريع المختصر للجذر (سطر/سطران) — يبنى بـ scripts/build_root_glosses.py"""
+
+    root_id = models.OneToOneField(
+        "roots.Root",
+        models.DO_NOTHING,
+        primary_key=True,
+        db_column="root_id",
+        related_name="gloss",
+    )
+    gloss_ar = models.TextField(blank=True, null=True)
+    gloss_en = models.TextField(blank=True, null=True)
+    ar_source = models.TextField(blank=True, null=True)
+    en_source = models.TextField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = "root_glosses"

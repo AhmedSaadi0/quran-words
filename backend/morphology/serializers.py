@@ -14,6 +14,7 @@ class WordMorphologySerializer(serializers.ModelSerializer):
     lemma_text = serializers.CharField(
         source="lemma.lemma_ar", read_only=True, default=None
     )
+    root_gloss = serializers.SerializerMethodField()
 
     class Meta:
         model = WordMorphology
@@ -33,7 +34,14 @@ class WordMorphologySerializer(serializers.ModelSerializer):
             "special",
             "root",
             "root_text",
+            "root_gloss",
             "lemma",
             "lemma_text",
             "segments",
         ]
+
+    def get_root_gloss(self, obj):
+        """المعنى السريع للجذر — يُمرر عبر context من AyahWordsViewSet."""
+        gloss_map = self.context.get("root_glosses") or {}
+        g = gloss_map.get(obj.root_id)
+        return g.gloss_ar if g else None

@@ -50,6 +50,24 @@ export default async function RootPage({ params, searchParams }: RootPageProps) 
           <h1 className="font-quran text-5xl font-bold">{match.root}</h1>
           <Badge variant="secondary">جذر</Badge>
         </div>
+        {match.gloss_ar && (
+          <div className="rounded-xl border bg-accent/30 px-5 py-4 space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">
+              المعنى المختصر
+            </p>
+            <p className="font-quran text-2xl leading-relaxed">{match.gloss_ar}</p>
+            {match.gloss_en && (
+              <p dir="ltr" className="text-sm text-muted-foreground text-left">
+                {match.gloss_en}
+              </p>
+            )}
+            {match.gloss_source && (
+              <p className="text-[11px] text-muted-foreground/70">
+                المصدر: {match.gloss_source}
+              </p>
+            )}
+          </div>
+        )}
         <p className="text-sm text-muted-foreground tabular-nums">
           {words.count.toLocaleString("ar-EG")} كلمة ·{" "}
           {masadir.count.toLocaleString("ar-EG")} مصدر ·{" "}

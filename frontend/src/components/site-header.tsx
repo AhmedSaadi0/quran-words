@@ -22,6 +22,9 @@ export function SiteHeader({ showSearch = true }: { showSearch?: boolean }) {
           <Link href="/surahs/1" className="hover:text-foreground transition-colors">
             السور
           </Link>
+          <Link href="/guide/morphology" className="hover:text-foreground transition-colors">
+            الدليل الصرفي
+          </Link>
           <Link href="/sources" className="hover:text-foreground transition-colors">
             المصادر
           </Link>

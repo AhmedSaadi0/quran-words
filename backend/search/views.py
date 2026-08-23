@@ -1,5 +1,5 @@
 from django.db import connection
-from django.db.models import Count, Q
+from django.db.models import Q
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -11,6 +11,7 @@ from quran.models import Ayah
 from quran.serializers import AyahSerializer
 from roots.models import Root
 from roots.serializers import RootSerializer
+from roots.views import enrich_roots
 from words.models import Word
 from words.serializers import WordSerializer
 
@@ -46,30 +47,8 @@ def unified_search(request):
         roots = list(
             Root.objects.filter(Q(root__icontains=q) | Q(root__icontains=nq))[:10]
         )
+        enrich_roots(roots)
         data["roots"] = RootSerializer(roots, many=True).data
-        root_ids = [r.id for r in roots]
-        if root_ids:
-            masadir_counts = {
-                row["root_ref_id"]: row["cnt"]
-                for row in (
-                    Masdar.objects.filter(root_ref_id__in=root_ids)
-                    .values("root_ref_id")
-                    .annotate(cnt=Count("id"))
-                )
-            }
-            deriv_counts = {
-                row["root_ref_id"]: row["cnt"]
-                for row in (
-                    Derivative.objects.filter(root_ref_id__in=root_ids)
-                    .values("root_ref_id")
-                    .annotate(cnt=Count("id"))
-                )
-            }
-            for item in data["roots"]:
-                rid = item["id"]
-                item["masadir_count"] = masadir_counts.get(rid, 0)
-                item["derivatives_count"] = deriv_counts.get(rid, 0)
-
     if type_filter in ("all", "masdar"):
         masadir = Masdar.objects.filter(
             Q(masdar_ar__icontains=q)
@@ -92,11 +71,14 @@ def unified_search(request):
             Q(text__icontains=q)
             | Q(text_clean__icontains=q)
             | Q(text_clean__icontains=nq)
+            | Q(text_plain__icontains=nq)
             | Q(translation__icontains=q)
         ).order_by("text")[:10]
         data["words"] = WordSerializer(words, many=True).data
 
-        ayat = Ayah.objects.filter(text_uthmani__icontains=q)[:5]
+        ayat = Ayah.objects.filter(
+            Q(text_uthmani__icontains=q) | Q(text_uthmani_plain__icontains=nq)
+        )[:5]
         data["ayat"] = AyahSerializer(ayat, many=True).data
 
     return Response(data)

@@ -7,10 +7,22 @@ class RootSerializer(serializers.ModelSerializer):
     meanings_count = serializers.SerializerMethodField()
     masadir_count = serializers.SerializerMethodField()
     derivatives_count = serializers.SerializerMethodField()
+    gloss_ar = serializers.SerializerMethodField()
+    gloss_en = serializers.SerializerMethodField()
+    gloss_source = serializers.SerializerMethodField()
 
     class Meta:
         model = Root
-        fields = ["id", "root", "meanings_count", "masadir_count", "derivatives_count"]
+        fields = [
+            "id",
+            "root",
+            "meanings_count",
+            "masadir_count",
+            "derivatives_count",
+            "gloss_ar",
+            "gloss_en",
+            "gloss_source",
+        ]
 
     def get_meanings_count(self, obj):
         return getattr(obj, "meanings_count", 0)
@@ -20,6 +32,18 @@ class RootSerializer(serializers.ModelSerializer):
 
     def get_derivatives_count(self, obj):
         return getattr(obj, "derivatives_count", 0)
+
+    def get_gloss_ar(self, obj):
+        g = getattr(obj, "_gloss", None)
+        return g.gloss_ar if g else None
+
+    def get_gloss_en(self, obj):
+        g = getattr(obj, "_gloss", None)
+        return g.gloss_en if g else None
+
+    def get_gloss_source(self, obj):
+        g = getattr(obj, "_gloss", None)
+        return g.ar_source if g else None
 
 
 class RootMeaningSerializer(serializers.ModelSerializer):

@@ -38,6 +38,7 @@ class WordViewSet(viewsets.ReadOnlyModelViewSet):
                 Q(text__icontains=q)
                 | Q(text_clean__icontains=q)
                 | Q(text_clean__icontains=nq)
+                | Q(text_plain__icontains=nq)
                 | Q(translation__icontains=q)
             )
 
@@ -128,6 +129,12 @@ def word_detail(request, pk):
     root_id = wm_first.root_id if wm_first else None
     root_text = wm_first.root.root if wm_first and wm_first.root else None
 
+    gloss = None
+    if root_id:
+        from roots.models import RootGloss
+
+        gloss = RootGloss.objects.filter(root_id=root_id).first()
+
     masadir = []
     derivatives = []
     meanings = []
@@ -149,7 +156,16 @@ def word_detail(request, pk):
     return Response(
         {
             "word": word_data,
-            "root": {"id": root_id, "root": root_text} if root_id else None,
+            "root": (
+                {
+                    "id": root_id,
+                    "root": root_text,
+                    "gloss_ar": gloss.gloss_ar if gloss else None,
+                    "gloss_en": gloss.gloss_en if gloss else None,
+                }
+                if root_id
+                else None
+            ),
             "occurrences": occ_data,
             "occurrences_count": occurrences.count(),
             "masadir": masadir,

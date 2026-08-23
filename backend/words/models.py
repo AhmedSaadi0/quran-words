@@ -4,6 +4,11 @@ from django.db import models
 class Word(models.Model):
     text = models.TextField()
     text_clean = models.TextField(blank=True, null=True)
+    text_plain = models.TextField(
+        blank=True,
+        null=True,
+        help_text="نص مطبّع للبحث — يُبنى بـ scripts/build_plain_columns.py",
+    )
     translation = models.TextField(blank=True, null=True)
     transliteration = models.TextField(blank=True, null=True)
     position_in_ayah = models.IntegerField(blank=True, null=True)

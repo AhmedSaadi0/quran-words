@@ -20,6 +20,11 @@ class Ayah(models.Model):
     surah = models.ForeignKey(Surah, models.DO_NOTHING, db_column="surah")
     ayah = models.IntegerField()
     text_uthmani = models.TextField(blank=True, null=True)
+    text_uthmani_plain = models.TextField(
+        blank=True,
+        null=True,
+        help_text="نص عثماني مطبّع — يُبنى بـ scripts/build_plain_columns.py",
+    )
     text_imlaei = models.TextField(blank=True, null=True)
     word_count = models.IntegerField(blank=True, null=True)
 
