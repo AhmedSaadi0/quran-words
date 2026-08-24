@@ -140,10 +140,10 @@ quran-words/
 
 > تحقق سريع:
 > ```bash
-> python3 --version
-> node --version
-> npm --version
-> git lfs version
+> python3 --version  # فحص بايثون
+> node --version  # فحص نود
+> npm --version  # فحص npm
+> git lfs version  # فحص LFS
 > ```
 
 ---
@@ -153,21 +153,21 @@ quran-words/
 > **مهم:** استخدم `--depth 1` لتجنب تحميل كامل السجل (يوفّر ~800 MB من `.git` history). البيانات الكبيرة تُسحب عبر `Git LFS`.
 
 ```bash
-git clone --depth 1 https://github.com/AhmedSaadi0/quran-words.git
-cd quran-words
+git clone --depth 1 https://github.com/AhmedSaadi0/quran-words.git  # استنساخ سريع
+cd quran-words  # دخول المشروع
 
-git lfs pull
+git lfs pull  # سحب البيانات
 
-ls -lh data/quran_words.db
-ls -lh data/arabic_roots.json
+ls -lh data/quran_words.db  # تحقق DB
+ls -lh data/arabic_roots.json  # تحقق المعجم
 ```
 
 > **بدون Git LFS** سترى ملفات pointer صغيرة (134 byte). إن حدث ذلك شغّل `git lfs install && git lfs pull`.
 
 > **لتحديث لاحقاً بعد --depth 1:**
 > ```bash
-> git pull --depth 1
-> git lfs pull
+> git pull --depth 1  # تحديث سريع
+> git lfs pull  # سحب البيانات
 > ```
 
 ---
@@ -177,22 +177,22 @@ ls -lh data/arabic_roots.json
 استخدم القاعدة الجاهزة مباشرة (لا حاجة لإعادة البناء):
 
 ```bash
-sqlite3 data/quran_words.db
-sqlite> SELECT * FROM masadir WHERE root='كتب' LIMIT 5;
-sqlite> SELECT * FROM derivatives WHERE root='علم' AND is_quranic=1;
-sqlite> .quit
+sqlite3 data/quran_words.db  # فتح القاعدة
+sqlite> SELECT * FROM masadir WHERE root='كتب' LIMIT 5;  # مثال مصادر
+sqlite> SELECT * FROM derivatives WHERE root='علم' AND is_quranic=1;  # مثال مشتقات
+sqlite> .quit  # خروج
 
 python3 -c "
-import sqlite3
-conn = sqlite3.connect('data/quran_words.db')
-print(conn.execute(\"SELECT masdar_plain FROM masadir WHERE root='رحم' LIMIT 3\").fetchall())
+import sqlite3  # استيراد
+conn = sqlite3.connect('data/quran_words.db')  # اتصال
+print(conn.execute(\"SELECT masdar_plain FROM masadir WHERE root='رحم' LIMIT 3\").fetchall())  # استعلام سريع
 "
 ```
 
 ```python
-import sqlite3
-conn = sqlite3.connect("data/quran_words.db")
-conn.execute("SELECT masdar_plain FROM masadir WHERE root='رحم'").fetchall()
+import sqlite3  # استيراد
+conn = sqlite3.connect("data/quran_words.db")  # اتصال
+conn.execute("SELECT masdar_plain FROM masadir WHERE root='رحم'").fetchall()  # استعلام
 ```
 
 ---
@@ -204,22 +204,22 @@ conn.execute("SELECT masdar_plain FROM masadir WHERE root='رحم'").fetchall()
 ### 1) إنشاء البيئة الافتراضية
 
 ```bash
-python3 -m venv backend/.venv
+python3 -m venv backend/.venv  # إنشاء البيئة
 
-source backend/.venv/bin/activate
+source backend/.venv/bin/activate  # تفعيل البيئة
 ```
 
 ### 2) تثبيت المتطلبات
 
 ```bash
-pip install --upgrade pip
-pip install -r backend/requirements.txt
+pip install --upgrade pip  # ترقية pip
+pip install -r backend/requirements.txt  # تثبيت المتطلبات
 ```
 
 ### 3) تهيئة قاعدة البيانات (جداول auth فقط)
 
 ```bash
-python backend/manage.py migrate --run-syncdb
+python backend/manage.py migrate --run-syncdb  # تهيئة الجداول
 ```
 
 > `backend/config/settings.py:64` يشير إلى `BASE_DIR.parent / "data" / "quran_words.db"` مع `timeout: 20`.
@@ -228,17 +228,17 @@ python backend/manage.py migrate --run-syncdb
 ### 4) تشغيل الخادم
 
 ```bash
-python backend/manage.py runserver 0.0.0.0:8000 --noreload
+python backend/manage.py runserver 0.0.0.0:8000 --noreload  # تشغيل الخادم
 ```
 
 افتح في المتصفح أو عبر `curl`:
 
 ```bash
-curl http://127.0.0.1:8000/api/stats/ | jq
+curl http://127.0.0.1:8000/api/stats/ | jq  # إحصائيات
 
-curl "http://127.0.0.1:8000/api/search/?q=%D9%83%D8%AA%D8%A8" | jq
-curl "http://127.0.0.1:8000/api/masadir/?root=%D9%83%D8%AA%D8%A8" | jq
-curl "http://127.0.0.1:8000/api/words/1/detail/" | jq
+curl "http://127.0.0.1:8000/api/search/?q=%D9%83%D8%AA%D8%A8" | jq  # بحث
+curl "http://127.0.0.1:8000/api/masadir/?root=%D9%83%D8%AA%D8%A8" | jq  # مصادر
+curl "http://127.0.0.1:8000/api/words/1/detail/" | jq  # تفاصيل كلمة
 ```
 
 المتصفح: `http://127.0.0.1:8000/api/` — واجهة DRF القابلة للتصفح.
@@ -246,17 +246,17 @@ curl "http://127.0.0.1:8000/api/words/1/detail/" | jq
 ### 5) الإنتاج (اختياري)
 
 ```bash
-pip install gunicorn
-gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 60
-backend/.venv/bin/gunicorn config.wsgi:application --chdir backend --bind 0.0.0.0:8000
+pip install gunicorn  # تثبيت gunicorn
+gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 60  # تشغيل إنتاجي
+backend/.venv/bin/gunicorn config.wsgi:application --chdir backend --bind 0.0.0.0:8000  # إنتاج من الجذر
 ```
 
 ### 6) الاختبار
 
 ```bash
-backend/.venv/bin/python backend/scripts/smoke_api.py --base http://127.0.0.1:8000/api
+backend/.venv/bin/python backend/scripts/smoke_api.py --base http://127.0.0.1:8000/api  # اختبار API
 
-backend/.venv/bin/python backend/scripts/smoke_api.py --base http://127.0.0.1:8765/api \
+backend/.venv/bin/python backend/scripts/smoke_api.py --base http://127.0.0.1:8765/api \  # اختبار مقارنة
     --save /tmp/opencode/after --compare /tmp/opencode/baseline
 ```
 
@@ -271,11 +271,11 @@ backend/.venv/bin/python backend/scripts/smoke_api.py --base http://127.0.0.1:87
 ### 1) التثبيت
 
 ```bash
-cd frontend
+cd frontend  # دخول الواجهة
 
-npm install
+npm install  # تثبيت الحزم
 
-ls node_modules/.bin/next
+ls node_modules/.bin/next  # تحقق التثبيت
 ```
 
 > **ملاحظة `vendor/`:** مجلد `frontend/vendor/` يحوي `next-16.3.2.tgz` و `swc` و `sharp` tarballs لتجاوز الشبكة البطيئة. على شبكة جيدة يمكنك حذف `vendor/` وإرجاع `"next": "16.3.2"` في `package.json`.
@@ -289,14 +289,14 @@ export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000
 ```
 
 ```bash
-echo 'NEXT_PUBLIC_API_URL=http://localhost:8000/api' > .env.local
-echo 'NEXT_PUBLIC_API_URL=https://api.example.com/api' > .env.local
+echo 'NEXT_PUBLIC_API_URL=http://localhost:8000/api' > .env.local  # إعداد محلي
+echo 'NEXT_PUBLIC_API_URL=https://api.example.com/api' > .env.local  # إعداد إنتاجي
 ```
 
 ### 3) تشغيل خادم التطوير
 
 ```bash
-npm run dev
+npm run dev  # تشغيل مطور
 ```
 
 افتح `http://localhost:3000` — يجب أن ترى:
@@ -307,9 +307,9 @@ npm run dev
 ### 4) أوامر إضافية
 
 ```bash
-npm run build
-npm start
-npm run lint
+npm run build  # بناء الإنتاج
+npm start  # تشغيل الإنتاج
+npm run lint  # فحص الكود
 ```
 
 > **ملاحظة Next 16:** `params` و `searchParams` هما `Promise` → `await props.params` في `page.tsx`.
@@ -321,11 +321,11 @@ npm run lint
 تحتاج نافذتين (terminal):
 
 ```bash
-source backend/.venv/bin/activate
-python backend/manage.py runserver 0.0.0.0:8000 --noreload
+source backend/.venv/bin/activate  # تفعيل البيئة
+python backend/manage.py runserver 0.0.0.0:8000 --noreload  # تشغيل الخادم
 
-cd frontend
-npm run dev
+cd frontend  # دخول الواجهة
+npm run dev  # تشغيل مطور
 ```
 
 | الخدمة | الرابط الافتراضي | الصحة |
@@ -351,21 +351,21 @@ npm run dev
 > تخطَّ هذا القسم إن كنت تستخدم `data/quran_words.db` الجاهزة (114 MB). للبناء الكامل تحتاج ~**50 MB** إضافية لـ CAMeL + ~**250 MB** بيانات خام.
 
 ```bash
-python --version
-pip install --user camel-tools pyarrow
-camel_data -i morphology-db-msa-r13
+python --version  # فحص بايثون
+pip install --user camel-tools pyarrow  # تثبيت CAMeL
+camel_data -i morphology-db-msa-r13  # تحميل CAMeL
 
-python scripts/download_quran.py
-python scripts/fetch_corpus.py
-python scripts/fetch_arabic_roots.py
+python scripts/download_quran.py  # تحميل القرآن
+python scripts/fetch_corpus.py  # جلب QAC
+python scripts/fetch_arabic_roots.py  # جلب الجذور
 
-python scripts/build_db.py
-python scripts/build_morphology.py
+python scripts/build_db.py  # بناء أساسي
+python scripts/build_morphology.py  # بناء صرفي
 
-python scripts/build_masadir_derivatives.py
+python scripts/build_masadir_derivatives.py  # بناء مصادر
 
-python scripts/build_root_glosses.py
-python scripts/build_plain_columns.py
+python scripts/build_root_glosses.py  # بناء ملخص
+python scripts/build_plain_columns.py  # أعمدة مبسطة
 ```
 
 > **ملاحظة الحجم:** `camel-tools` نفسها 0.12MB لكنها تتطلب `scikit-learn`/`camel-kenlm` (~12MB) + قاعدة `calima-msa-r13` (~40MB). `torch` (526MB) مطلوب فقط لنموذج `BERT` السياقي وغير لازم لهذا السكربت.
@@ -523,11 +523,11 @@ python scripts/build_plain_columns.py
 ### أمثلة curl (مُرمّزة)
 
 ```bash
-curl "http://127.0.0.1:8000/api/search/?q=%D9%83%D8%AA%D8%A8" | jq
-curl "http://127.0.0.1:8000/api/masadir/?root=%D9%83%D8%AA%D8%A8" | jq
-curl "http://127.0.0.1:8000/api/words/1/detail/" | jq
-curl "http://127.0.0.1:8000/api/surahs/1" | jq
-curl "http://127.0.0.1:8000/api/ayah-words/?surah=1&page_size=2" | jq
+curl "http://127.0.0.1:8000/api/search/?q=%D9%83%D8%AA%D8%A8" | jq  # بحث
+curl "http://127.0.0.1:8000/api/masadir/?root=%D9%83%D8%AA%D8%A8" | jq  # مصادر
+curl "http://127.0.0.1:8000/api/words/1/detail/" | jq  # تفاصيل كلمة
+curl "http://127.0.0.1:8000/api/surahs/1" | jq  # سورة
+curl "http://127.0.0.1:8000/api/ayah-words/?surah=1&page_size=2" | jq  # آيات مع كلمات
 ```
 
 انظر `backend/README.md:88-100` لهيكلة الـ Apps الثمانية.
@@ -538,7 +538,7 @@ curl "http://127.0.0.1:8000/api/ayah-words/?surah=1&page_size=2" | jq
 
 ### أساسي
 ```sql
-SELECT a.ayah, wa.position, w.text, wm.pos, r.root, wm.form
+SELECT a.ayah, wa.position, w.text, wm.pos, r.root, wm.form  -- فاتحة مع تحليل
 FROM word_ayah wa
 JOIN words w ON wa.word_id=w.id
 JOIN ayat a ON wa.ayah_id=a.id
@@ -546,19 +546,19 @@ LEFT JOIN word_morphology wm ON wm.word_ayah_id=wa.id
 LEFT JOIN roots r ON r.id=wm.root_id
 WHERE a.surah=1 ORDER BY a.ayah, wa.position;
 
-SELECT rm.book_name, rm.definition FROM roots r
+SELECT rm.book_name, rm.definition FROM roots r  -- معنى جذر
 JOIN root_meanings rm ON rm.root_id=r.id WHERE r.root='رحم' LIMIT 3;
 ```
 
 ### مصادر ومشتقات (جديد)
 ```sql
-SELECT masdar_ar, pattern, form, is_attested, source
+SELECT masdar_ar, pattern, form, is_attested, source  -- مصادر كتب
 FROM masadir WHERE root='كتب' ORDER BY is_attested DESC, confidence DESC;
 
-SELECT form_ar, derivative_type, pattern FROM derivatives
+SELECT form_ar, derivative_type, pattern FROM derivatives  -- مشتقات علم
 WHERE root='علم' AND is_quranic=1;
 
-SELECT w.text, r.root, m.masdar_plain, m.pattern
+SELECT w.text, r.root, m.masdar_plain, m.pattern  -- كلمات مع مصادر
 FROM word_ayah wa
 JOIN words w ON wa.word_id=w.id
 JOIN word_morphology wm ON wm.word_ayah_id=wa.id
@@ -566,7 +566,7 @@ JOIN roots r ON r.id=wm.root_id
 JOIN masadir m ON m.root_id=r.id
 WHERE wa.ayah_id=1 GROUP BY wa.id LIMIT 5;
 
-SELECT DISTINCT a.surah, a.ayah, a.text_uthmani
+SELECT DISTINCT a.surah, a.ayah, a.text_uthmani  -- آيات بمصدر رحمة
 FROM masadir m
 JOIN word_masdar wmd ON wmd.masdar_id=m.id
 JOIN word_ayah wa ON wa.id=wmd.word_ayah_id
@@ -632,8 +632,8 @@ WHERE m.masdar_plain='رحمة' LIMIT 5;
 - تحسين واجهة Next.js (مكونات `src/components/`)
 
 ```bash
-git clone --depth 1 https://github.com/AhmedSaadi0/quran-words.git
-cd quran-words
+git clone --depth 1 https://github.com/AhmedSaadi0/quran-words.git  # استنساخ سريع
+cd quran-words  # دخول المشروع
 ```
 
 ---
