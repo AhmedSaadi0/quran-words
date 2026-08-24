@@ -1,8 +1,40 @@
 # Quran Words - قاعدة بيانات كلمات القرآن الكريم
 
+<p align="center">
+  <a href="https://github.com/AhmedSaadi0/quran-words"><img src="https://img.shields.io/github/repo-size/AhmedSaadi0/quran-words?label=%D8%AD%D8%AC%D9%85%20%D8%A7%D9%84%D9%83%D9%88%D8%AF&color=0e75b6" alt="repo size"></a>
+  <a href="https://github.com/AhmedSaadi0/quran-words"><img src="https://img.shields.io/badge/DB-114%20MB-blue" alt="db size"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license"></a>
+  <a href="https://www.python.org"><img src="https://img.shields.io/badge/python-%3E%3D3.11-3776AB" alt="python"></a>
+  <a href="https://nextjs.org"><img src="https://img.shields.io/badge/next.js-16-black" alt="nextjs"></a>
+</p>
+
 قاعدة بيانات احترافية ومتكاملة لجميع كلمات القرآن الكريم — من النص العثماني إلى التحليل الصرفي الدقيق، مروراً بالجذور والمصادر والمشتقات والمعاني من المعاجم الكلاسيكية.
 
 > الهدف: أن تكتب `SELECT` واحداً لتحصل على الكلمة + جذرها + مصدرها + كل مشتقاتها + معناها من لسان العرب.
+
+> 📦 **حجم المستودع:** الكود ~**4.6 MB** (حسب GitHub API `size: 4704 KB`) + البيانات عبر **Git LFS** ~**415 MB** ( `quran_words.db 114 MB` + `arabic_roots.json 169 MB` + `arabic_roots.parquet 83 MB` + `quranic_corpus_morphology.json 43 MB` + `quranic-corpus-morphology-0.4.txt 6.2 MB`). بعد `git clone --depth 1` ستحتاج `git lfs pull` لسحب ملفات `data/` كاملة. كامل المشروع على القرص بعد التثبيت ~**1.7 GB** (مع `.git/lfs` و `node_modules` و `.venv`).
+
+---
+
+## 📑 الفهرس
+
+- [إحصائيات](#-إحصائيات)
+- [ما الجديد؟](#-ما-الجديد-المرحلة-3)
+- [هيكل المشروع](#-هيكل-المشروع)
+- [المتطلبات](#️-المتطلبات)
+- [الاستنساخ السريع](#-الاستنساخ-السريع)
+- [البدء السريع بدون بناء](#-البدء-السريع-بدون-بناء)
+- [تشغيل الخلفية Django](#️-تشغيل-الخلفية-django--drf)
+- [تشغيل الواجهة Next.js](#-تشغيل-الواجهة-nextjs)
+- [التشغيل المتكامل](#-التشغيل-المتكامل-الخلفية--الواجهة)
+- [بناء القاعدة من الصفر](#️-بناء-القاعدة-من-الصفر-3-مراحل)
+- [هيكل قاعدة البيانات](#-هيكل-قاعدة-البيانات)
+- [واجهة البرمجة API](#-واجهة-البرمجة-api)
+- [أمثلة على الاستعلامات](#-أمثلة-على-الاستعلامات)
+- [مصادر البيانات والتراخيص](#-مصادر-البيانات-والتراخيص)
+- [لماذا CAMeL وليس Farasa؟](#️-قرار-التصميم-لماذا-camel-وليس-farasa)
+- [استكشاف الأخطاء](#-استكشاف-الأخطاء)
+- [المساهمة والترخيص](#-المساهمة)
 
 ---
 
@@ -40,52 +72,330 @@
 quran-words/
 ├── README.md
 ├── LICENSE
+├── .gitattributes                  # Git LFS: data/*.db, *.parquet, data/**
 ├── data/
-│   ├── quran_words.db                      # SQLite النهائية (107 MB)
-│   ├── quranic_corpus_morphology.json      # 77,429 token محلّل من QAC
-│   ├── quranic-corpus-morphology-0.4.txt   # الخام من corpus.quran.com
-│   ├── arabic_roots.json                   # 26,067 جذر بمعانيه (162 MB)
-│   └── arabic_roots.parquet                # الأصل من HF (79 MB)
+│   ├── quran_words.db              # SQLite النهائية (114 MB عبر LFS)
+│   ├── quranic_corpus_morphology.json  # 77,429 token محلّل من QAC (43 MB)
+│   ├── quranic-corpus-morphology-0.4.txt # الخام من corpus.quran.com (6.2 MB)
+│   ├── arabic_roots.json           # 26,067 جذر بمعانيه (169 MB)
+│   └── arabic_roots.parquet        # الأصل من HF (83 MB)
+├── backend/                        # Django 6.1 + DRF
+│   ├── manage.py
+│   ├── requirements.txt            # Django==6.1, djangorestframework, django-filter, corsheaders
+│   ├── config/                     # settings.py, urls.py, wsgi.py
+│   ├── core/                       # تطبيع عربي + pagination
+│   ├── quran/                      # Surah, Ayah  → /api/surahs/, /api/ayat/, /api/ayah-words/
+│   ├── words/                      # Word, WordAyah → /api/words/, /api/words/{id}/detail/
+│   ├── morphology/                 # Lemma, WordMorphology → /api/lemmas/, /api/morphology/
+│   ├── roots/                      # Root, RootMeaning → /api/roots/, /api/meanings/
+│   ├── derivatives/                # Masdar, Derivative → /api/masadir/, /api/derivatives/
+│   ├── sources/                    # Source → /api/sources/
+│   ├── search/                     # بحث موحد + إحصائيات → /api/search/, /api/stats/
+│   ├── .venv/                      # البيئة الافتراضية (غير مُتعقبة)
+│   └── scripts/smoke_api.py        # اختبار تكامل لكل endpoints
+├── frontend/                       # Next.js 16 + Tailwind 4 + RTL
+│   ├── package.json                # next: file:vendor/next-16.3.2.tgz
+│   ├── vendor/next-16.3.2.tgz      # tarball محلي للشبكات البطيئة
+│   ├── .npmrc                      # fetch-timeout/retries
+│   ├── next.config.ts
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── page.tsx            # الرئيسية: بحث + إحصائيات + شبكة جذور
+│   │   │   ├── search/page.tsx     # نتائج مجمعة
+│   │   │   ├── roots/[root]/page.tsx
+│   │   │   ├── words/[id]/page.tsx
+│   │   │   ├── surahs/[id]/page.tsx
+│   │   │   ├── guide/morphology/   # دليل المصطلحات (59 مصطلح)
+│   │   │   └── sources/page.tsx
+│   │   ├── components/             # SearchBar, WordCard, RootBadge, ...
+│   │   └── lib/
+│   │       ├── api.ts              # عميل fetch + أنواع DRF (API_URL)
+│   │       └── normalize.ts        # strip_diacritics مطابق للباكند
+│   └── public/
 ├── scripts/
-│   ├── download_quran.py                   # تحميل الكلمات من Quran.com API
-│   ├── fetch_corpus.py                     # جلب المتن النحوي QAC v0.4
-│   ├── fetch_arabic_roots.py               # جلب معاني الجذور (HF)
-│   ├── build_db.py                         # المرحلة 1: سور/آيات/كلمات
-│   ├── build_morphology.py                 # المرحلة 2: صرف + جذور + معاني
-│   └── build_masadir_derivatives.py        # المرحلة 3: مصادر + مشتقات (CAMeL)
+│   ├── download_quran.py           # تحميل الكلمات من Quran.com API
+│   ├── fetch_corpus.py             # جلب المتن النحوي QAC v0.4
+│   ├── fetch_arabic_roots.py       # جلب معاني الجذور (HF)
+│   ├── build_db.py                 # المرحلة 1: surahs, ayat, words, word_ayah
+│   ├── build_morphology.py         # المرحلة 2: صرف + جذور + معاني
+│   ├── build_masadir_derivatives.py# المرحلة 3: مصادر + مشتقات (CAMeL)
+│   ├── build_root_glosses.py       # معنى مختصر لكل جذر (95% عربي)
+│   └── build_plain_columns.py      # أعمدة مطبعة للبحث بدون تشكيل
 └── examples/
-    ├── queries.sql                         # 12 استعلاماً أساسياً
-    └── masadir_queries.sql                 # 8 استعلامات للمصادر/المشتقات
+    ├── queries.sql                 # 12 استعلاماً أساسياً
+    └── masadir_queries.sql         # 8 استعلامات للمصادر/المشتقات
 ```
 
 ---
 
-## 🚀 البدء السريع
+## ⚙️ المتطلبات
+
+| المكوّن | الإصدار | ملاحظة |
+|---------|---------|--------|
+| **Git + Git LFS** | حديث | لسحب `data/*.db` و `*.parquet` (114-169 MB لكل ملف) |
+| **Python** | `>=3.11` (يفضّل `3.13` لـ `Django 6.1`) | للـ backend و سكربتات البناء |
+| **Node.js** | `>=20` | للـ frontend (Next 16 يتطلب 18.17+، يفضّل 20) |
+| **npm / pnpm / yarn** | `npm >=10` | `npm install` هو الموصى به هنا |
+| **SQLite** | `>=3.35` | القاعدة جاهزة، لا تحتاج تثبيت إضافي |
+
+> تحقق سريع:
+> ```bash
+> python3 --version  # Python 3.11+
+> node --version     # v20+
+> npm --version      # 10+
+> git lfs version    # git-lfs/3.x
+> ```
+
+---
+
+## 📥 الاستنساخ السريع
+
+> **مهم:** استخدم `--depth 1` لتجنب تحميل كامل السجل (يوفّر ~800 MB من `.git` history). البيانات الكبيرة تُسحب عبر `Git LFS`.
 
 ```bash
-# 1) استخدام مباشر بدون بناء
+# 1) استنساخ مخفف (آخر commit فقط)
+git clone --depth 1 https://github.com/AhmedSaadi0/quran-words.git
+cd quran-words
+
+# 2) سحب ملفات البيانات الكبيرة (إجباري إن لم تُسحب تلقائياً)
+git lfs pull
+# أو: git lfs fetch --all && git lfs checkout
+
+# تحقق:
+ls -lh data/quran_words.db   # يجب أن يكون ~114 MB وليس 134 byte (pointer)
+ls -lh data/arabic_roots.json # ~169 MB
+```
+
+> **بدون Git LFS** سترى ملفات pointer صغيرة (134 byte). إن حدث ذلك شغّل `git lfs install && git lfs pull`.
+
+> **لتحديث لاحقاً بعد --depth 1:**
+> ```bash
+> git pull --depth 1
+> git lfs pull
+> ```
+
+---
+
+## 🚀 البدء السريع — بدون بناء
+
+استخدم القاعدة الجاهزة مباشرة (لا حاجة لإعادة البناء):
+
+```bash
+# SQLite مباشرة
 sqlite3 data/quran_words.db
 sqlite> SELECT * FROM masadir WHERE root='كتب' LIMIT 5;
 sqlite> SELECT * FROM derivatives WHERE root='علم' AND is_quranic=1;
+sqlite> .quit
 
-# 2) بايثون
+# بايثون
+python3 -c "
+import sqlite3
+conn = sqlite3.connect('data/quran_words.db')
+print(conn.execute(\"SELECT masdar_plain FROM masadir WHERE root='رحم' LIMIT 3\").fetchall())
+"
+```
+
+```python
 import sqlite3
 conn = sqlite3.connect("data/quran_words.db")
 conn.execute("SELECT masdar_plain FROM masadir WHERE root='رحم'").fetchall()
+# [('رحمة',), ('مرحمة',), ...]
 ```
 
-### بناء القاعدة من الصفر (3 مراحل)
+---
+
+## 🖥️ تشغيل الخلفية — Django + DRF
+
+الخلفية تقرأ `data/quran_words.db` مباشرة كـ `managed=False` (لا إعادة إنشاء) عبر `backend/config/settings.py:64`.
+
+### 1) إنشاء البيئة الافتراضية
+
+```bash
+# من جذر المشروع quran-words/
+python3 -m venv backend/.venv
+# أو تحديد إصدار: python3.13 -m venv backend/.venv  (موصى به لـ Django 6.1)
+
+# تفعيل البيئة
+source backend/.venv/bin/activate          # Linux / macOS
+# backend\.venv\Scripts\activate           # Windows PowerShell
+# backend\.venv\Scripts\activate.bat       # Windows CMD
+```
+
+### 2) تثبيت المتطلبات
+
+```bash
+pip install --upgrade pip
+pip install -r backend/requirements.txt
+# يثبت: Django==6.1 djangorestframework==3.18.0 django-filter==26.1 django-cors-headers==4.9.0
+# لا يحتاج torch — البحث يعمل بـ SQLite فقط
+```
+
+### 3) تهيئة قاعدة البيانات (جداول auth فقط)
+
+```bash
+python backend/manage.py migrate --run-syncdb
+# ينشئ جداول django.contrib.auth فقط
+# جداول القرآن (surahs, ayat, words...) هي managed=False فلا تُنشأ هنا
+```
+
+> `backend/config/settings.py:64` يشير إلى `BASE_DIR.parent / "data" / "quran_words.db"` مع `timeout: 20`.
+> `CORS_ALLOW_ALL_ORIGINS = True` و `ALLOWED_HOSTS = ["*"]` للتطوير (قيّده في الإنتاج).
+
+### 4) تشغيل الخادم
+
+```bash
+python backend/manage.py runserver 0.0.0.0:8000 --noreload
+# المنفذ الافتراضي 8000 — استخدم --noreload لتجنب تضارب autoreload مع models غير المُدارة
+# للإنتاج استخدم gunicorn (انظر أدناه)
+```
+
+افتح في المتصفح أو عبر `curl`:
+
+```bash
+curl http://127.0.0.1:8000/api/stats/ | jq
+# {"surahs":114,"ayat":6236,"words":21295,"roots":1642,"masadir":5273,"derivatives":16245,"word_occurrences":77429}
+
+curl "http://127.0.0.1:8000/api/search/?q=%D9%83%D8%AA%D8%A8" | jq
+curl "http://127.0.0.1:8000/api/masadir/?root=%D9%83%D8%AA%D8%A8" | jq
+curl "http://127.0.0.1:8000/api/words/1/detail/" | jq
+```
+
+المتصفح: `http://127.0.0.1:8000/api/` — واجهة DRF القابلة للتصفح.
+
+### 5) الإنتاج (اختياري)
+
+```bash
+pip install gunicorn
+# من داخل backend/
+gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 60
+# أو من الجذر:
+backend/.venv/bin/gunicorn config.wsgi:application --chdir backend --bind 0.0.0.0:8000
+```
+
+### 6) الاختبار
+
+```bash
+# مع تشغيل السيرفر:
+backend/.venv/bin/python backend/scripts/smoke_api.py --base http://127.0.0.1:8000/api
+
+# مقارنة استجابات مع نسخة محفوظة (parity check):
+backend/.venv/bin/python backend/scripts/smoke_api.py --base http://127.0.0.1:8765/api \
+    --save /tmp/opencode/after --compare /tmp/opencode/baseline
+```
+
+> **ملاحظة جانغو 6.1:** يتطلب `Python 3.13` في البيئة الحالية (`IMPLEMENTATION_PLAN.md`). إن كنت على `3.11/3.12` ثبّت `Django 5.x` أو حدّث بايثون.
+
+---
+
+## 🌐 تشغيل الواجهة — Next.js
+
+الواجهة مبنية بـ **Next.js 16 + Tailwind 4 + RTL كامل + خط Amiri** (`frontend/src/app/layout.tsx`).
+
+### 1) التثبيت
+
+```bash
+cd frontend
+
+npm install
+# يقرأ Next محلياً من frontend/package.json:20 → "next": "file:vendor/next-16.3.2.tgz"
+# لذا يعمل حتى مع شبكة بطيئة (انظر frontend/.npmrc:1-5 للمهلة)
+# بدائل: pnpm install / yarn install (يوجد pnpm-lock.yaml)
+
+# تحقق:
+ls node_modules/.bin/next  # يجب أن يوجد
+```
+
+> **ملاحظة `vendor/`:** مجلد `frontend/vendor/` يحوي `next-16.3.2.tgz` و `swc` و `sharp` tarballs لتجاوز الشبكة البطيئة. على شبكة جيدة يمكنك حذف `vendor/` وإرجاع `"next": "16.3.2"` في `package.json`.
+
+### 2) إعداد متغير البيئة (اختياري)
+
+الواجهة تتصل بالخلفية عبر `frontend/src/lib/api.ts:6`:
+
+```ts
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
+```
+
+```bash
+# افتراضياً http://localhost:8000/api — لا حاجة لملف .env إن كان الباكند على 8000
+# لتغييره:
+echo 'NEXT_PUBLIC_API_URL=http://localhost:8000/api' > .env.local
+# أو للإنتاج:
+echo 'NEXT_PUBLIC_API_URL=https://api.example.com/api' > .env.local
+```
+
+### 3) تشغيل خادم التطوير
+
+```bash
+npm run dev
+# → http://localhost:3000
+# الصفحة تُحدّث تلقائياً عند التعديل (HMR)
+```
+
+افتح `http://localhost:3000` — يجب أن ترى:
+* شريط بحث كبير (`ابحث بجذر: كتب / بمصدر: كتابة / بكلمة: عَلِيم`)
+* 6 بطاقات إحصائيات من `/api/stats/`
+* شبكة جذور (20/صفحة)
+
+### 4) أوامر إضافية
+
+```bash
+npm run build   # بناء الإنتاج (SSG لـ /guide/morphology/[term] — 58 صفحة)
+npm start       # تشغيل الإنتاج على http://localhost:3000
+npm run lint    # فحص ESLint (eslint.config.mjs)
+```
+
+> **ملاحظة Next 16:** `params` و `searchParams` هما `Promise` → `await props.params` في `page.tsx`.
+
+---
+
+## 🔗 التشغيل المتكامل — الخلفية + الواجهة
+
+تحتاج نافذتين (terminal):
+
+```bash
+# نافذة 1 — الخلفية (من جذر المشروع)
+source backend/.venv/bin/activate
+python backend/manage.py runserver 0.0.0.0:8000 --noreload
+# → http://127.0.0.1:8000/api/stats/
+
+# نافذة 2 — الواجهة (من جذر المشروع)
+cd frontend
+npm run dev
+# → http://localhost:3000
+```
+
+| الخدمة | الرابط الافتراضي | الصحة |
+|--------|------------------|-------|
+| **Django API** | `http://localhost:8000/api/` | `curl http://localhost:8000/api/stats/` |
+| **Next.js Web** | `http://localhost:3000` | افتح المتصفح وابحث عن `كتب` |
+| **DRF Browsable** | `http://localhost:8000/api/roots/?search=كتب` | واجهة تصفح JSON |
+
+**تجربة سريعة متكاملة:**
+
+1. افتح `http://localhost:3000`
+2. ابحث عن `كتب` → سترى جذور/مصادر/كلمات من `GET /api/search/?q=كتب`
+3. ادخل صفحة جذر `/roots/كتب` → تبويبات المعاني/المصادر/المشتقات
+4. ادخل صفحة كلمة `/words/1` → تحليل صرفي + كل مواضعها
+5. ادخل صفحة سورة `/surahs/1` → عرض مصحفي مع `hover` للتحليل
+
+> إن فشل الاتصال، تأكد أن `NEXT_PUBLIC_API_URL` يشير إلى المنفذ الصحيح وأن الباكند يعمل على `8000`.
+
+---
+
+## 🏗️ بناء القاعدة من الصفر (3 مراحل)
+
+> تخطَّ هذا القسم إن كنت تستخدم `data/quran_words.db` الجاهزة (114 MB). للبناء الكامل تحتاج ~**50 MB** إضافية لـ CAMeL + ~**250 MB** بيانات خام.
 
 ```bash
 # المتطلبات
-python --version  # >=3.11
+python --version  # >=3.11 (يفضّل 3.13)
 pip install --user camel-tools pyarrow  # pyarrow لمعاني الجذور
 camel_data -i morphology-db-msa-r13      # ~40 MB (CAMeL) - إجباري للمصادر
 
 # 1) تحميل البيانات (مرة واحدة)
-python scripts/download_quran.py        # -> /tmp/quran_words_wbw.json
-python scripts/fetch_corpus.py          # -> data/quranic_corpus_morphology.json
-python scripts/fetch_arabic_roots.py    # -> data/arabic_roots.json (79 MB -> 162 MB)
+python scripts/download_quran.py        # -> /tmp/quran_words_wbw.json (Quran.com API)
+python scripts/fetch_corpus.py          # -> data/quranic_corpus_morphology.json (43 MB)
+python scripts/fetch_arabic_roots.py    # -> data/arabic_roots.json (169 MB, من 83 MB parquet)
 
 # 2) بناء القاعدة
 python scripts/build_db.py              # المرحلة 1: surahs, ayat, words, word_ayah
@@ -93,9 +403,15 @@ python scripts/build_morphology.py      # المرحلة 2: roots, lemmas, word_
 
 # 3) توليد المصادر والمشتقات (يحتاج CAMeL)
 python scripts/build_masadir_derivatives.py  # -> masadir, derivatives, word_masdar
+
+# إضافي — تحسينات البحث والمعاني السريعة
+python scripts/build_root_glosses.py    # -> root_glosses (95% عربي, 76% إنجليزي)
+python scripts/build_plain_columns.py   # -> words.text_plain, ayat.text_uthmani_plain
 ```
 
 > **ملاحظة الحجم:** `camel-tools` نفسها 0.12MB لكنها تتطلب `scikit-learn`/`camel-kenlm` (~12MB) + قاعدة `calima-msa-r13` (~40MB). `torch` (526MB) مطلوب فقط لنموذج `BERT` السياقي وغير لازم لهذا السكربت.
+
+> **Git LFS:** بعد البناء، الملفات الكبيرة (`*.db`, `*.parquet`) تُتعقّب عبر `data/** filter=lfs` في `.gitattributes`. لا تُحمّلها مباشرة في `git` بدون LFS.
 
 ---
 
@@ -219,6 +535,46 @@ python scripts/build_masadir_derivatives.py  # -> masadir, derivatives, word_mas
 
 ---
 
+## 🔌 واجهة البرمجة API
+
+الخلفية تكشف **15 endpoint** عبر `backend/config/urls.py:4` → `api/` (انظر `backend/README.md` للتفصيل الكامل).
+
+| المسار | الوصف | مثال |
+|--------|-------|------|
+| `GET /api/stats/` | إحصائيات عامة | `curl /api/stats/` |
+| `GET /api/search/?q=كتب&type=all` | بحث موحد (جذر>مصدر>كلمة). `type=root\|masdar\|word\|all` | `?q=كتب&type=root` |
+| `GET /api/roots/?search=كتب` | جذور (20/صفحة) | `?search=رحم` |
+| `GET /api/roots/{id}/` | تفاصيل جذر | `/api/roots/19/` |
+| `GET /api/masadir/?root=كتب` | مصادر جذر | `?root=كتب` |
+| `GET /api/derivatives/?root=علم&is_quranic=1` | مشتقات | `?root=علم&is_quranic=1` |
+| `GET /api/meanings/?root_id=19` | معاني (filter بـ `root_id`) | `?root_id=19` |
+| `GET /api/words/?search=رحمن` | كلمات (بحث بدون تشكيل) | `?search=الرحمن` |
+| `GET /api/words/{id}/detail/` | كلمة + كل مواضعها + مصدرها + مشتقاتها | `/api/words/1/detail/` |
+| `GET /api/surahs/` | 114 سورة | |
+| `GET /api/ayat/?surah=1` | آيات سورة | `?surah=1` |
+| `GET /api/ayah-words/?surah=1` | آيات مع كلماتها وتحليلها (للصفحة المصحفية) | `?surah=1&page_size=50` |
+| `GET /api/morphology/` | تحليلات صرفية خام | `?pos=N&root=كتب` |
+| `GET /api/lemmas/` | الأصول | |
+| `GET /api/sources/` | مصادر البيانات والتراخيص | |
+
+> **المعنى السريع:** كل استجابات الجذور (قائمة/تفصيل/بحث) وكائن `root` في تفاصيل الكلمة تتضمن `gloss_ar/gloss_en/gloss_source` — مختصراً من جدول `root_glosses` (يُبنى بـ `python scripts/build_root_glosses.py`).
+
+> **تطبيع البحث:** `backend/core/utils.py:strip_diacritics` + `normalize_ar` يطبّع `ٱلرَّحْمـٰنِ` ↔ `الرحمن` في الخلفية والواجهة (`frontend/src/lib/normalize.ts` نسخة JS مطابقة).
+
+### أمثلة curl (مُرمّزة)
+
+```bash
+curl "http://127.0.0.1:8000/api/search/?q=%D9%83%D8%AA%D8%A8" | jq
+curl "http://127.0.0.1:8000/api/masadir/?root=%D9%83%D8%AA%D8%A8" | jq
+curl "http://127.0.0.1:8000/api/words/1/detail/" | jq
+curl "http://127.0.0.1:8000/api/surahs/1" | jq
+curl "http://127.0.0.1:8000/api/ayah-words/?surah=1&page_size=2" | jq
+```
+
+انظر `backend/README.md:88-100` لهيكلة الـ Apps الثمانية.
+
+---
+
 ## 🔍 أمثلة على الاستعلامات
 
 ### أساسي
@@ -298,6 +654,23 @@ WHERE m.masdar_plain='رحمة' LIMIT 5;
 
 ---
 
+## ❓ استكشاف الأخطاء
+
+| المشكلة | الحل |
+|---------|------|
+| `data/quran_words.db` حجمه 134 byte | لم يُسحب LFS. شغّل `git lfs install && git lfs pull` |
+| `port 8000 already in use` | `lsof -i :8000` ثم `kill` أو غيّر المنفذ `runserver 0.0.0.0:8001` وحدّث `NEXT_PUBLIC_API_URL` |
+| `port 3000 already in use` | `lsof -i :3000` أو `npm run dev -- -p 3001` |
+| `ModuleNotFoundError: No module named 'rest_framework'` | تأكد من تفعيل `.venv` و `pip install -r backend/requirements.txt` داخلها |
+| `next: not found` بعد `npm install` | احذف `node_modules` و `package-lock.json` ثم `npm install` مجدداً (يقرأ `vendor/next-16.3.2.tgz`) |
+| `autoreload` ينهار / `RuntimeError` | استخدم `--noreload` كما في `backend/README.md:16` |
+| `CORS error` في المتصفح | تأكد أن الباكند يعمل وأن `CORS_ALLOW_ALL_ORIGINS=True` في `backend/config/settings.py:75` |
+| `404 /api/...` | تأكد أن الطلب يبدأ بـ `/api/` (مُعرّف في `backend/config/urls.py:16`) |
+| `npm install` بطيء جداً | طبيعي مع `vendor/` — `frontend/.npmrc:1` يضبط `fetch-timeout=600000` |
+| `git clone` بطيء / كبير | استخدم `git clone --depth 1` كما في [الاستنساخ السريع](#-الاستنساخ-السريع) |
+
+---
+
 ## 🤝 المساهمة
 
 مرحباً بالمساهمات:
@@ -305,6 +678,13 @@ WHERE m.masdar_plain='رحمة' LIMIT 5;
 - تحسين قوائم الأوزان (`MASDAR_PATTERNS_BY_FORM` في `build_masadir_derivatives.py`)
 - إضافة معاجم جديدة
 - إصلاح التشكيل للمصادر
+- تحسين واجهة Next.js (مكونات `src/components/`)
+
+```bash
+git clone --depth 1 https://github.com/AhmedSaadi0/quran-words.git
+cd quran-words
+# أنشئ فرعاً جديداً، ثم PR
+```
 
 ---
 
