@@ -35,10 +35,13 @@ class AyahWordsViewSet(viewsets.ReadOnlyModelViewSet):
     pagination_class = StandardPagination
 
     def get_queryset(self):
-        qs = Ayah.objects.select_related("surah").order_by("ayah")
+        qs = Ayah.objects.select_related("surah").order_by("surah", "ayah")
         surah = self.request.query_params.get("surah")
+        root = self.request.query_params.get("root")
         if surah:
             qs = qs.filter(surah_id=surah)
+        if root:
+            qs = qs.filter(wordayah__wordmorphology__root__root=root).distinct()
         return qs.prefetch_related(
             Prefetch(
                 "wordayah_set",

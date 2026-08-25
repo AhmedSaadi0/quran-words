@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MasdarList, DerivativeGrid, MeaningList } from "@/components/masdar-list";
 import { PaginationControls } from "@/components/pagination-controls";
+import { RootAyahList } from "@/components/root-ayah-list";
 import { api } from "@/lib/api";
 
 interface RootPageProps {
@@ -34,17 +35,33 @@ export default async function RootPage({ params, searchParams }: RootPageProps) 
 
   if (!match) notFound();
 
-  const [meanings, masadir, derivatives, words] = await Promise.all([
+  const [meanings, masadir, derivatives, words, ayatFirst] = await Promise.all([
     api.meanings({ root_id: match.id }),
     api.masadir({ root: rootText }),
     api.derivatives({ root: rootText }),
     api.words({ root: rootText, page }),
+    api.ayahWords({ root: rootText, page_size: 1000 }),
   ]);
+
+  // جلب كل الآيات إذا كان العدد أكبر من page_size (المستخدم طلب كل الآيات)
+  let ayat = ayatFirst;
+  if (ayatFirst.count > ayatFirst.results.length) {
+    const totalPages = Math.ceil(ayatFirst.count / 1000);
+    const extraPages = await Promise.all(
+      Array.from({ length: totalPages - 1 }, (_, i) =>
+        api.ayahWords({ root: rootText, page: i + 2, page_size: 1000 })
+      )
+    );
+    ayat = {
+      ...ayatFirst,
+      results: [...ayatFirst.results, ...extraPages.flatMap((p) => p.results)],
+    };
+  }
 
   const quranicCount = derivatives.results.filter((d) => d.is_quranic).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" dir="rtl">
       <header className="space-y-2">
         <div className="flex items-baseline gap-3">
           <h1 className="font-quran text-5xl font-bold">{match.root}</h1>
@@ -76,8 +93,14 @@ export default async function RootPage({ params, searchParams }: RootPageProps) 
         </p>
       </header>
 
-      <Tabs defaultValue="masadir" className="gap-4">
-        <TabsList>
+      <Tabs dir="rtl" defaultValue="meanings" className="gap-4">
+        <TabsList dir="rtl" className="justify-start">
+          <TabsTrigger value="meanings">
+            المعاني{" "}
+            <span className="tabular-nums text-muted-foreground">
+              {meanings.count}
+            </span>
+          </TabsTrigger>
           <TabsTrigger value="masadir">
             المصادر{" "}
             <span className="tabular-nums text-muted-foreground">
@@ -96,23 +119,27 @@ export default async function RootPage({ params, searchParams }: RootPageProps) 
               {words.count}
             </span>
           </TabsTrigger>
-          <TabsTrigger value="meanings">
-            المعاني{" "}
+          <TabsTrigger value="ayat">
+            الآيات{" "}
             <span className="tabular-nums text-muted-foreground">
-              {meanings.count}
+              {ayat.count}
             </span>
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="masadir" className="space-y-3">
+        <TabsContent value="meanings" dir="rtl" className="space-y-3 text-right">
+          <MeaningList meanings={meanings.results} />
+        </TabsContent>
+
+        <TabsContent value="masadir" dir="rtl" className="space-y-3 text-right">
           <MasdarList masadir={masadir.results} />
         </TabsContent>
 
-        <TabsContent value="derivatives" className="space-y-3">
+        <TabsContent value="derivatives" dir="rtl" className="space-y-3 text-right">
           <DerivativeGrid derivatives={derivatives.results} />
         </TabsContent>
 
-        <TabsContent value="words" className="space-y-4">
+        <TabsContent value="words" dir="rtl" className="space-y-4 text-right">
           <WordsTable
             words={words.results.map((w) => ({
               id: w.id,
@@ -129,8 +156,8 @@ export default async function RootPage({ params, searchParams }: RootPageProps) 
           />
         </TabsContent>
 
-        <TabsContent value="meanings">
-          <MeaningList meanings={meanings.results} />
+        <TabsContent value="ayat" dir="rtl" className="space-y-3 text-right">
+          <RootAyahList ayat={ayat.results} rootText={rootText} />
         </TabsContent>
       </Tabs>
     </div>
