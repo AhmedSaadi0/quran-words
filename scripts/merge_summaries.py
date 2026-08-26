@@ -19,7 +19,27 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SUMMARY_JSON = ROOT / "data" / "root_ai_summary.json"
-MODEL = "ox-alpha"
+# لا يُستخدم كنص جاهز — الموديل نفسه يكتب اسمه في ملف النتائج.
+# يُستخدم فقط كاحتياط عند قراءة دفعات قديمة بصيغة {"root": "summary string"}.
+FALLBACK_MODEL = "muse-spark-1.2-contributor-free"
+
+
+def _fallback_model() -> str:
+    """يحاول معرفة الموديل الحالي ديناميكياً قبل السقوط على القيمة الافتراضية."""
+    import os
+
+    for key in ("OPENCODE_MODEL", "MODEL", "LLM_MODEL"):
+        if os.environ.get(key):
+            return os.environ[key].strip()
+    p = ROOT / "data" / "current_model.txt"
+    if p.exists():
+        try:
+            txt = p.read_text(encoding="utf-8").strip()
+            if txt:
+                return txt
+        except Exception:
+            pass
+    return FALLBACK_MODEL
 
 
 def main():
@@ -51,19 +71,47 @@ def main():
             if ns.replace:
                 new_roots = dict(data)
             else:
-                new_roots = {k: v for k, v in data.items() if k not in master}
-            covered = set(data) <= set(master) or ns.replace
+                # JSON الآن يحوي كل الجذور بـ summary_ar=null للمُعلّق؛
+                # ندمج فقط الجذور المعلقة (null) أو غير الموجودة
+                new_roots = {}
+                for k, v in data.items():
+                    entry = master.get(k)
+                    is_pending = (
+                        entry is None
+                        or (isinstance(entry, dict) and not entry.get("summary_ar"))
+                        or (isinstance(entry, str) and not entry.strip())
+                    )
+                    if is_pending or k not in master:
+                        new_roots[k] = v
             if not new_roots:
+                # كل جذور هذا الملف مُنجزة مسبقاً — نحذف الملف كـ duplicate
                 skipped_files.append(f)
                 continue
             print(f"[merge] {f.name}: +{len(new_roots)} جذر")
-            master.update(
-                {
-                    k: {"summary_ar": v, "model": MODEL, "generated_at": now}
-                    for k, v in new_roots.items()
+            normalized = {}
+            for k, v in new_roots.items():
+                if isinstance(v, dict) and "summary_ar" in v:
+                    # الوكيل كتب الموديل بنفسه — نحترمه
+                    summary = v.get("summary_ar")
+                    model = v.get("model") or _fallback_model()
+                    gen = v.get("generated_at") or now
+                else:
+                    # صيغة قديمة: {"root": "summary string"}
+                    summary = v if isinstance(v, str) else str(v)
+                    model = _fallback_model()
+                    gen = now
+                if not summary or not str(summary).strip():
+                    continue
+                normalized[k] = {
+                    "summary_ar": str(summary).strip(),
+                    "model": model,
+                    "generated_at": gen,
                 }
-            )
-            added += len(new_roots)
+            if not normalized:
+                skipped_files.append(f)
+                continue
+            master.update(normalized)
+            added += len(normalized)
             skipped_files.append(f)
 
     if ns.dry_run:

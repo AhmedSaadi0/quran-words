@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 import { SiteHeader } from "@/components/site-header";
+import { ThemeProvider } from "@/components/theme-provider";
 
 export const metadata: Metadata = {
   title: {
@@ -14,7 +15,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ar" dir="rtl" className="h-full antialiased">
+    <html
+      lang="ar"
+      dir="rtl"
+      className="h-full antialiased"
+      suppressHydrationWarning
+    >
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
@@ -29,14 +35,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         />
       </head>
       <body className="min-h-full flex flex-col">
-        <SiteHeader />
-        <main className="flex-1 mx-auto w-full max-w-5xl px-4 py-8">{children}</main>
-        <footer className="border-t py-6">
-          <p className="mx-auto max-w-5xl px-4 text-xs text-muted-foreground">
-            البيانات من Quranic Arabic Corpus (GPL) و Quran.com API و CAMeL Tools —
-            انظر صفحة المصادر.
-          </p>
-        </footer>
+        <ThemeProvider>
+          <SiteHeader />
+          <main className="flex-1 mx-auto w-full max-w-5xl px-4 py-8">{children}</main>
+          <footer className="border-t py-6">
+            <p className="mx-auto max-w-5xl px-4 text-xs text-muted-foreground">
+              البيانات من Quranic Arabic Corpus (GPL) و Quran.com API و CAMeL Tools —
+              انظر صفحة المصادر.
+            </p>
+          </footer>
+        </ThemeProvider>
       </body>
     </html>
   );

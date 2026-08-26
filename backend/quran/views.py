@@ -57,7 +57,7 @@ class AyahWordsViewSet(viewsets.ReadOnlyModelViewSet):
         page = self.paginate_queryset(queryset)
         instances = page if page is not None else list(queryset)
 
-        # جمع جذور الصفحة الحالية دفعة واحدة لحقن المعنى السريع (لا N+1)
+        # جمع جذور الصفحة الحالية دفعة واحدة لحقن الملخص الذكي والمعنى السريع (لا N+1)
         root_ids: set[int] = set()
         for ayah in instances:
             for wa in getattr(ayah, "prefetched_wordayah", None) or []:
@@ -69,14 +69,23 @@ class AyahWordsViewSet(viewsets.ReadOnlyModelViewSet):
                     root_ids.add(wm.root_id)
 
         gloss_map = {}
+        ai_summary_map = {}
         if root_ids:
-            from roots.models import RootGloss
+            from roots.models import RootAiSummary, RootGloss
 
             gloss_map = {
                 g.root_id_id: g for g in RootGloss.objects.filter(root_id__in=root_ids)
             }
+            ai_summary_map = {
+                a.root_id_id: a
+                for a in RootAiSummary.objects.filter(root_id__in=root_ids)
+            }
 
-        context = dict(self.get_serializer_context(), root_glosses=gloss_map)
+        context = dict(
+            self.get_serializer_context(),
+            root_glosses=gloss_map,
+            root_ai_summaries=ai_summary_map,
+        )
         serializer = self.get_serializer(instances, many=True, context=context)
         data = serializer.data
 

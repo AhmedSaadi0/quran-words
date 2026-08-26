@@ -18,6 +18,7 @@
     "clsx": "^2.1.1",
     "lucide-react": "^0.545.0",
     "next": "file:vendor/next-16.3.2.tgz",
+    "next-themes": "0.4.6",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "tailwind-merge": "^3.3.1"

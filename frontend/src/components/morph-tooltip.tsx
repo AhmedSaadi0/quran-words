@@ -58,11 +58,15 @@ function MorphDetails({ morph }: { morph: Morphology }) {
         )}
       </div>
 
-      {morph.root_gloss && (
+      {morph.root_ai_summary ? (
         <p className="rounded-md bg-accent/40 px-2 py-1.5 font-quran text-base leading-relaxed">
-          {morph.root_gloss}
+          {morph.root_ai_summary}
         </p>
-      )}
+      ) : morph.root_text ? (
+        <p className="text-xs text-muted-foreground/60 italic px-2 py-1 text-center">
+          الملخص الذكي غير متوفر
+        </p>
+      ) : null}
 
       {segments.length > 0 && (
         <ul className="space-y-1 rounded-md bg-muted/50 p-2">

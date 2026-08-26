@@ -8,19 +8,21 @@ export function PaginationControls({
   pageSize,
   basePath,
   extraParams = {},
+  pageParam = "page",
 }: {
   page: number;
   count: number;
   pageSize: number;
   basePath: string;
   extraParams?: Record<string, string>;
+  pageParam?: string;
 }) {
   const totalPages = Math.max(1, Math.ceil(count / pageSize));
   if (totalPages <= 1) return null;
 
   function hrefFor(p: number) {
     const params = new URLSearchParams(extraParams);
-    params.set("page", String(p));
+    params.set(pageParam, String(p));
     return `${basePath}?${params.toString()}`;
   }
 

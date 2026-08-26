@@ -10,6 +10,9 @@ class RootSerializer(serializers.ModelSerializer):
     gloss_ar = serializers.SerializerMethodField()
     gloss_en = serializers.SerializerMethodField()
     gloss_source = serializers.SerializerMethodField()
+    ai_summary_ar = serializers.SerializerMethodField()
+    ai_summary_model = serializers.SerializerMethodField()
+    ai_summary_generated_at = serializers.SerializerMethodField()
 
     class Meta:
         model = Root
@@ -22,6 +25,9 @@ class RootSerializer(serializers.ModelSerializer):
             "gloss_ar",
             "gloss_en",
             "gloss_source",
+            "ai_summary_ar",
+            "ai_summary_model",
+            "ai_summary_generated_at",
         ]
 
     def get_meanings_count(self, obj):
@@ -44,6 +50,18 @@ class RootSerializer(serializers.ModelSerializer):
     def get_gloss_source(self, obj):
         g = getattr(obj, "_gloss", None)
         return g.ar_source if g else None
+
+    def get_ai_summary_ar(self, obj):
+        s = getattr(obj, "_ai_summary", None)
+        return s.summary_ar if s else None
+
+    def get_ai_summary_model(self, obj):
+        s = getattr(obj, "_ai_summary", None)
+        return s.model if s else None
+
+    def get_ai_summary_generated_at(self, obj):
+        s = getattr(obj, "_ai_summary", None)
+        return s.generated_at if s else None
 
 
 class RootMeaningSerializer(serializers.ModelSerializer):

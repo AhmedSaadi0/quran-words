@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { formatAiDate } from "@/lib/utils";
 
 export function StatsCards({
   stats,
@@ -54,9 +55,18 @@ export function RootCard({ root }: { root: RootItem }) {
       <Card className="h-full py-4 transition-colors group-hover:border-foreground/30 group-hover:bg-accent/40">
         <CardHeader className="px-4 gap-1.5">
           <CardTitle className="font-quran text-2xl">{root.root}</CardTitle>
-          {root.gloss_ar && (
-            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-              {root.gloss_ar}
+          <p className="text-xs leading-relaxed line-clamp-2 min-h-[2.5rem]">
+            {root.ai_summary_ar ? (
+              <span className="text-muted-foreground">{root.ai_summary_ar}</span>
+            ) : (
+              <span className="text-muted-foreground/60 italic">
+                الملخص الذكي لهذا الجذر قيد الإعداد
+              </span>
+            )}
+          </p>
+          {root.ai_summary_ar && root.ai_summary_generated_at && formatAiDate(root.ai_summary_generated_at) && (
+            <p className="text-[10px] text-muted-foreground/50 tabular-nums">
+              {formatAiDate(root.ai_summary_generated_at)}
             </p>
           )}
         </CardHeader>

@@ -6,7 +6,7 @@ from rest_framework.response import Response
 
 from derivatives.models import Derivative, Masdar
 
-from .models import Root, RootGloss, RootMeaning
+from .models import Root, RootAiSummary, RootGloss, RootMeaning
 from .serializers import RootMeaningSerializer, RootSerializer
 
 
@@ -16,8 +16,10 @@ def attach_glosses(roots: list) -> None:
     if not ids:
         return
     gloss_map = {g.root_id_id: g for g in RootGloss.objects.filter(root_id__in=ids)}
+    ai_map = {a.root_id_id: a for a in RootAiSummary.objects.filter(root_id__in=ids)}
     for r in roots:
         r._gloss = gloss_map.get(r.id)
+        r._ai_summary = ai_map.get(r.id)
 
 
 def enrich_roots(roots: list) -> None:
@@ -51,12 +53,14 @@ def enrich_roots(roots: list) -> None:
         )
     }
     gloss_map = {g.root_id_id: g for g in RootGloss.objects.filter(root_id__in=ids)}
+    ai_map = {a.root_id_id: a for a in RootAiSummary.objects.filter(root_id__in=ids)}
 
     for r in roots:
         r.masadir_count = masadir_counts.get(r.id, 0)
         r.derivatives_count = deriv_counts.get(r.id, 0)
         r.meanings_count = meanings_counts.get(r.id, 0)
         r._gloss = gloss_map.get(r.id)
+        r._ai_summary = ai_map.get(r.id)
 
 
 class RootViewSet(viewsets.ReadOnlyModelViewSet):

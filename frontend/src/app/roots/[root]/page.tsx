@@ -9,10 +9,11 @@ import { MasdarList, DerivativeGrid, MeaningList } from "@/components/masdar-lis
 import { PaginationControls } from "@/components/pagination-controls";
 import { RootAyahList } from "@/components/root-ayah-list";
 import { api } from "@/lib/api";
+import { formatAiDate } from "@/lib/utils";
 
 interface RootPageProps {
   params: Promise<{ root: string }>;
-  searchParams: Promise<{ page?: string; tab?: string }>;
+  searchParams: Promise<{ page?: string; ayahPage?: string; tab?: string }>;
 }
 
 export async function generateMetadata({
@@ -24,8 +25,9 @@ export async function generateMetadata({
 
 export default async function RootPage({ params, searchParams }: RootPageProps) {
   const { root: rawRoot } = await params;
-  const { page: pageParam } = await searchParams;
+  const { page: pageParam, ayahPage: ayahPageParam, tab: tabParam } = await searchParams;
   const page = Math.max(1, parseInt(pageParam ?? "1", 10) || 1);
+  const ayahPage = Math.max(1, parseInt(ayahPageParam ?? "1", 10) || 1);
   const rootText = decodeURIComponent(rawRoot).trim();
 
   // Resolve the root id by exact text match first
@@ -35,28 +37,13 @@ export default async function RootPage({ params, searchParams }: RootPageProps) 
 
   if (!match) notFound();
 
-  const [meanings, masadir, derivatives, words, ayatFirst] = await Promise.all([
+  const [meanings, masadir, derivatives, words, ayat] = await Promise.all([
     api.meanings({ root_id: match.id }),
     api.masadir({ root: rootText }),
     api.derivatives({ root: rootText }),
     api.words({ root: rootText, page }),
-    api.ayahWords({ root: rootText, page_size: 1000 }),
+    api.ayahWords({ root: rootText, page: ayahPage, page_size: 20 }),
   ]);
-
-  // جلب كل الآيات إذا كان العدد أكبر من page_size (المستخدم طلب كل الآيات)
-  let ayat = ayatFirst;
-  if (ayatFirst.count > ayatFirst.results.length) {
-    const totalPages = Math.ceil(ayatFirst.count / 1000);
-    const extraPages = await Promise.all(
-      Array.from({ length: totalPages - 1 }, (_, i) =>
-        api.ayahWords({ root: rootText, page: i + 2, page_size: 1000 })
-      )
-    );
-    ayat = {
-      ...ayatFirst,
-      results: [...ayatFirst.results, ...extraPages.flatMap((p) => p.results)],
-    };
-  }
 
   const quranicCount = derivatives.results.filter((d) => d.is_quranic).length;
 
@@ -67,24 +54,35 @@ export default async function RootPage({ params, searchParams }: RootPageProps) 
           <h1 className="font-quran text-5xl font-bold">{match.root}</h1>
           <Badge variant="secondary">جذر</Badge>
         </div>
-        {match.gloss_ar && (
-          <div className="rounded-xl border bg-accent/30 px-5 py-4 space-y-1.5">
-            <p className="text-xs font-medium text-muted-foreground">
-              المعنى المختصر
+        <div className="rounded-xl border bg-accent/30 px-5 py-4 space-y-1.5">
+          <p className="text-xs font-medium text-muted-foreground">
+            الملخص الذكي للمعنى العام
+          </p>
+          {match.ai_summary_ar ? (
+            <>
+              <p className="font-quran text-2xl leading-relaxed">{match.ai_summary_ar}</p>
+              <p className="text-[11px] text-muted-foreground/70 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span>مولّد بالذكاء الاصطناعي</span>
+                {match.ai_summary_model && (
+                  <>
+                    <span>·</span>
+                    <span>{match.ai_summary_model}</span>
+                  </>
+                )}
+                {formatAiDate(match.ai_summary_generated_at) && (
+                  <>
+                    <span>·</span>
+                    <span className="tabular-nums">{formatAiDate(match.ai_summary_generated_at)}</span>
+                  </>
+                )}
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground/70 italic leading-relaxed">
+              الملخص الذكي لهذا الجذر غير متوفر حالياً — قاعدة البيانات قيد التحديث وسيُضاف قريباً.
             </p>
-            <p className="font-quran text-2xl leading-relaxed">{match.gloss_ar}</p>
-            {match.gloss_en && (
-              <p dir="ltr" className="text-sm text-muted-foreground text-left">
-                {match.gloss_en}
-              </p>
-            )}
-            {match.gloss_source && (
-              <p className="text-[11px] text-muted-foreground/70">
-                المصدر: {match.gloss_source}
-              </p>
-            )}
-          </div>
-        )}
+          )}
+        </div>
         <p className="text-sm text-muted-foreground tabular-nums">
           {words.count.toLocaleString("ar-EG")} كلمة ·{" "}
           {masadir.count.toLocaleString("ar-EG")} مصدر ·{" "}
@@ -93,7 +91,7 @@ export default async function RootPage({ params, searchParams }: RootPageProps) 
         </p>
       </header>
 
-      <Tabs dir="rtl" defaultValue="meanings" className="gap-4">
+      <Tabs dir="rtl" defaultValue={tabParam ?? "meanings"} className="gap-4">
         <TabsList dir="rtl" className="justify-start">
           <TabsTrigger value="meanings">
             المعاني{" "}
@@ -153,11 +151,27 @@ export default async function RootPage({ params, searchParams }: RootPageProps) 
             count={words.count}
             pageSize={20}
             basePath={`/roots/${encodeURIComponent(rootText)}`}
+            pageParam="page"
+            extraParams={{
+              ...(ayahPage > 1 ? { ayahPage: String(ayahPage) } : {}),
+              ...(tabParam ? { tab: tabParam } : { tab: "words" }),
+            }}
           />
         </TabsContent>
 
-        <TabsContent value="ayat" dir="rtl" className="space-y-3 text-right">
+        <TabsContent value="ayat" dir="rtl" className="space-y-4 text-right">
           <RootAyahList ayat={ayat.results} rootText={rootText} />
+          <PaginationControls
+            page={ayahPage}
+            count={ayat.count}
+            pageSize={20}
+            basePath={`/roots/${encodeURIComponent(rootText)}`}
+            pageParam="ayahPage"
+            extraParams={{
+              ...(page > 1 ? { page: String(page) } : {}),
+              tab: "ayat",
+            }}
+          />
         </TabsContent>
       </Tabs>
     </div>

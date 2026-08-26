@@ -129,11 +129,11 @@ def word_detail(request, pk):
     root_id = wm_first.root_id if wm_first else None
     root_text = wm_first.root.root if wm_first and wm_first.root else None
 
-    gloss = None
+    ai_summary = None
     if root_id:
-        from roots.models import RootGloss
+        from roots.models import RootAiSummary
 
-        gloss = RootGloss.objects.filter(root_id=root_id).first()
+        ai_summary = RootAiSummary.objects.filter(root_id=root_id).first()
 
     masadir = []
     derivatives = []
@@ -160,8 +160,11 @@ def word_detail(request, pk):
                 {
                     "id": root_id,
                     "root": root_text,
-                    "gloss_ar": gloss.gloss_ar if gloss else None,
-                    "gloss_en": gloss.gloss_en if gloss else None,
+                    "ai_summary_ar": ai_summary.summary_ar if ai_summary else None,
+                    "ai_summary_model": ai_summary.model if ai_summary else None,
+                    "ai_summary_generated_at": ai_summary.generated_at
+                    if ai_summary
+                    else None,
                 }
                 if root_id
                 else None

@@ -14,6 +14,7 @@ import { MasdarList, DerivativeGrid, MeaningList } from "@/components/masdar-lis
 import { TermValue } from "@/components/term-value";
 import { TABLE_FIELDS, type FieldKey } from "@/lib/morphology";
 import { api } from "@/lib/api";
+import { formatAiDate } from "@/lib/utils";
 
 interface WordPageProps {
   params: Promise<{ id: string }>;
@@ -98,15 +99,33 @@ export default async function WordPage({ params }: WordPageProps) {
             </Link>
           </div>
         )}
-        {root?.gloss_ar && (
-          <div className="mx-auto max-w-xl rounded-lg border bg-accent/30 px-4 py-3 space-y-1 mt-2">
+        {root && (
+          <div className="mx-auto max-w-xl rounded-lg border bg-accent/30 px-4 py-3 space-y-1.5 mt-2">
             <p className="text-[11px] font-medium text-muted-foreground">
-              المعنى السريع للجذر
+              الملخص الذكي للجذر {root.root}
             </p>
-            <p className="font-quran text-xl leading-relaxed">{root.gloss_ar}</p>
-            {root.gloss_en && (
-              <p dir="ltr" className="text-xs text-muted-foreground text-left">
-                {root.gloss_en}
+            {root.ai_summary_ar ? (
+              <>
+                <p className="font-quran text-xl leading-relaxed">{root.ai_summary_ar}</p>
+                <p className="text-[11px] text-muted-foreground/70 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+                  <span>مولّد بالذكاء الاصطناعي</span>
+                  {root.ai_summary_model && (
+                    <>
+                      <span>·</span>
+                      <span>{root.ai_summary_model}</span>
+                    </>
+                  )}
+                  {formatAiDate(root.ai_summary_generated_at) && (
+                    <>
+                      <span>·</span>
+                      <span className="tabular-nums">{formatAiDate(root.ai_summary_generated_at)}</span>
+                    </>
+                  )}
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground/70 italic leading-relaxed">
+                الملخص الذكي لهذا الجذر غير متوفر حالياً — قاعدة البيانات قيد التحديث وسيُضاف قريباً.
               </p>
             )}
           </div>

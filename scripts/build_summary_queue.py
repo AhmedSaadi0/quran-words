@@ -32,8 +32,19 @@ def main():
     ns = parser.parse_args()
 
     done = set()
+    pending = 0
+    data = {}
     if SUMMARY_JSON.exists():
-        done = set(json.loads(SUMMARY_JSON.read_text()).keys())
+        data = json.loads(SUMMARY_JSON.read_text())
+        # JSON الآن يحوي كل الجذور (1642) مع summary_ar = null للمُعلّق؛
+        # نعتبر "مُنجزاً" فقط ما له ملخص غير فارغ
+        done = {
+            root
+            for root, entry in data.items()
+            if (isinstance(entry, dict) and entry.get("summary_ar"))
+            or (isinstance(entry, str) and entry.strip())
+        }
+        pending = len(data) - len(done)
 
     con = sqlite3.connect(DB_PATH)
     cur = con.cursor()
@@ -75,7 +86,9 @@ def main():
     QUEUE_PATH.write_text(json.dumps(batches, ensure_ascii=False, indent=1))
     total = sum(len(b) for b in batches)
     print(f"remaining roots: {total} in {len(batches)} batches -> {QUEUE_PATH}")
-    print(f"done so far: {len(done)}")
+    print(
+        f"done so far: {len(done)} | pending in JSON (null): {pending if SUMMARY_JSON.exists() else 0}"
+    )
     for i, b in enumerate(batches[:5]):
         print(f"  batch[{i}]: {b}")
 
