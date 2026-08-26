@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MasdarList, DerivativeGrid, MeaningList } from "@/components/masdar-list";
 import { PaginationControls } from "@/components/pagination-controls";
+import { ReportIssueCard } from "@/components/report-issue-button";
 import { RootAyahList } from "@/components/root-ayah-list";
 import { api } from "@/lib/api";
 import { formatAiDate } from "@/lib/utils";
@@ -48,19 +49,19 @@ export default async function RootPage({ params, searchParams }: RootPageProps) 
   const quranicCount = derivatives.results.filter((d) => d.is_quranic).length;
 
   return (
-    <div className="space-y-6" dir="rtl">
-      <header className="space-y-2">
+    <div className="space-y-8" dir="rtl">
+      <header className="space-y-4">
         <div className="flex items-baseline gap-3">
           <h1 className="font-quran text-5xl font-bold">{match.root}</h1>
           <Badge variant="secondary">جذر</Badge>
         </div>
-        <div className="rounded-xl border bg-accent/30 px-5 py-4 space-y-1.5">
-          <p className="text-xs font-medium text-muted-foreground">
+        <div className="rounded-xl border bg-accent/30 px-6 py-5 space-y-3">
+          <p className="text-xs font-medium tracking-wide text-muted-foreground">
             الملخص الذكي للمعنى العام
           </p>
           {match.ai_summary_ar ? (
             <>
-              <p className="font-quran text-2xl leading-relaxed">{match.ai_summary_ar}</p>
+              <p className="font-quran text-2xl leading-9">{match.ai_summary_ar}</p>
               <p className="text-[11px] text-muted-foreground/70 flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span>مولّد بالذكاء الاصطناعي</span>
                 {match.ai_summary_model && (
@@ -83,6 +84,7 @@ export default async function RootPage({ params, searchParams }: RootPageProps) 
             </p>
           )}
         </div>
+        <ReportIssueCard rootText={rootText} rootId={match.id} />
         <p className="text-sm text-muted-foreground tabular-nums">
           {words.count.toLocaleString("ar-EG")} كلمة ·{" "}
           {masadir.count.toLocaleString("ar-EG")} مصدر ·{" "}

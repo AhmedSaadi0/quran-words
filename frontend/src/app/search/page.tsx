@@ -11,10 +11,11 @@ import {
 } from "@/components/ui/card";
 import { SearchBar } from "@/components/search-bar";
 import { RootCard } from "@/components/root-card";
+import { PaginationControls } from "@/components/pagination-controls";
 import { api } from "@/lib/api";
 
 interface SearchPageProps {
-  searchParams: Promise<{ q?: string; type?: string }>;
+  searchParams: Promise<{ q?: string; type?: string; wPage?: string; aPage?: string }>;
 }
 
 export async function generateMetadata({
@@ -43,8 +44,10 @@ function SectionTitle({
 }
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
-  const { q = "" } = await searchParams;
+  const { q = "", type = "all", wPage: wPageParam, aPage: aPageParam } = await searchParams;
   const query = q.trim();
+  const wPage = Math.max(1, parseInt(wPageParam ?? "1", 10) || 1);
+  const aPage = Math.max(1, parseInt(aPageParam ?? "1", 10) || 1);
 
   if (query.length < 2) {
     return (
@@ -60,11 +63,21 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     );
   }
 
-  const result = await api
-    .search(query)
-    .catch(() => null);
+  const WORDS_PAGE_SIZE = 20;
+  const AYAT_PAGE_SIZE = 20;
+  const shouldFetchWordsAyat = type === "all" || type === "word";
 
-  if (!result) {
+  const [result, wordsPage, ayatPage] = await Promise.all([
+    api.search(query, type).catch(() => null),
+    shouldFetchWordsAyat
+      ? api.words({ q: query, page: wPage, page_size: WORDS_PAGE_SIZE }).catch(() => null)
+      : Promise.resolve(null),
+    shouldFetchWordsAyat
+      ? api.ayat({ q: query, page: aPage, page_size: AYAT_PAGE_SIZE }).catch(() => null)
+      : Promise.resolve(null),
+  ]);
+
+  if (!result && !wordsPage && !ayatPage) {
     return (
       <div className="space-y-6 py-12 text-center">
         <h1 className="font-quran text-3xl">تعذر الوصول إلى الخادم</h1>
@@ -80,11 +93,9 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   }
 
   const empty =
-    !result.roots.length &&
-    !result.masadir.length &&
-    !result.derivatives.length &&
-    !result.words.length &&
-    !result.ayat.length;
+    (!result || (!result.roots.length && !result.masadir.length && !result.derivatives.length)) &&
+    (!wordsPage || wordsPage.count === 0) &&
+    (!ayatPage || ayatPage.count === 0);
 
   if (empty) {
     return (
@@ -98,16 +109,17 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     );
   }
 
+  // Normalized for display — fallback to query if search failed
+  const normalized = result?.normalized ?? query;
+
   return (
     <div className="space-y-10">
       <div className="space-y-4">
         <SearchBar compact={false} initialQuery={query} />
-        <p className="text-xs text-muted-foreground">
-          البحث المُطبَّع: «{result.normalized}»
-        </p>
+        <p className="text-xs text-muted-foreground">البحث المُطبَّع: «{normalized}»</p>
       </div>
 
-      {result.roots.length > 0 && (
+      {result && result.roots.length > 0 && (
         <section className="space-y-3">
           <SectionTitle title="جذور" count={result.roots.length} />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -118,31 +130,55 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
         </section>
       )}
 
-      {result.masadir.length > 0 && (
+      {result && result.masadir.length > 0 && (
         <section className="space-y-3">
           <SectionTitle title="مصادر" count={result.masadir.length} />
           <MasdarResults masadir={result.masadir} />
         </section>
       )}
 
-      {result.derivatives.length > 0 && (
+      {result && result.derivatives.length > 0 && (
         <section className="space-y-3">
           <SectionTitle title="مشتقات" count={result.derivatives.length} />
           <DerivativeResults derivatives={result.derivatives} />
         </section>
       )}
 
-      {result.words.length > 0 && (
+      {wordsPage && wordsPage.count > 0 && (
         <section className="space-y-3">
-          <SectionTitle title="كلمات" count={result.words.length} />
-          <WordResults words={result.words} />
+          <SectionTitle title="كلمات" count={wordsPage.count} />
+          <WordResults words={wordsPage.results} />
+          <PaginationControls
+            page={wPage}
+            count={wordsPage.count}
+            pageSize={WORDS_PAGE_SIZE}
+            basePath="/search"
+            pageParam="wPage"
+            extraParams={{
+              q: query,
+              ...(type !== "all" ? { type } : {}),
+              ...(aPage > 1 ? { aPage: String(aPage) } : {}),
+            }}
+          />
         </section>
       )}
 
-      {result.ayat.length > 0 && (
+      {ayatPage && ayatPage.count > 0 && (
         <section className="space-y-3">
-          <SectionTitle title="آيات" count={result.ayat.length} />
-          <AyahResults ayat={result.ayat} />
+          <SectionTitle title="آيات" count={ayatPage.count} />
+          <AyahResults ayat={ayatPage.results} />
+          <PaginationControls
+            page={aPage}
+            count={ayatPage.count}
+            pageSize={AYAT_PAGE_SIZE}
+            basePath="/search"
+            pageParam="aPage"
+            extraParams={{
+              q: query,
+              ...(type !== "all" ? { type } : {}),
+              ...(wPage > 1 ? { wPage: String(wPage) } : {}),
+            }}
+          />
         </section>
       )}
     </div>

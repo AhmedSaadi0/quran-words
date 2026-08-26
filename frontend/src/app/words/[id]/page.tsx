@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { MasdarList, DerivativeGrid, MeaningList } from "@/components/masdar-list";
+import { ReportIssueCard } from "@/components/report-issue-button";
 import { TermValue } from "@/components/term-value";
 import { TABLE_FIELDS, type FieldKey } from "@/lib/morphology";
 import { api } from "@/lib/api";
@@ -130,6 +131,11 @@ export default async function WordPage({ params }: WordPageProps) {
             )}
           </div>
         )}
+        {root && (
+          <div className="mx-auto max-w-xl">
+            <ReportIssueCard rootText={root.root} rootId={root.id} />
+          </div>
+        )}
         <p className="text-sm text-muted-foreground tabular-nums">
           وردت {occurrences_count.toLocaleString("ar-EG")} مرة
         </p>
@@ -168,6 +174,12 @@ export default async function WordPage({ params }: WordPageProps) {
               <MeaningList meanings={meanings} />
             </CardContent>
           </Card>
+        </section>
+      )}
+      {meanings.length === 0 && root && (
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold">معاني الجذر</h2>
+          <p className="text-sm text-muted-foreground">لا توجد معاني.</p>
         </section>
       )}
 

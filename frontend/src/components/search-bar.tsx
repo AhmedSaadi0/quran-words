@@ -26,9 +26,12 @@ export function SearchBar({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSubmitted = useRef<string>(initialQuery);
   const isComposing = useRef(false);
+  const mountedRef = useRef(false);
 
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
+      mountedRef.current = false;
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, []);
@@ -51,8 +54,20 @@ export function SearchBar({
         setPending(false);
         return;
       }
+      // Guard: router not ready before hydration causes
+      // "Router action dispatched before initialization"
+      if (!mountedRef.current) {
+        setPending(false);
+        return;
+      }
       lastSubmitted.current = trimmed;
-      router.push(`/search?q=${encodeURIComponent(trimmed)}`);
+      try {
+        router.push(`/search?q=${encodeURIComponent(trimmed)}`);
+      } catch {
+        // Fallback for edge case where router store not yet initialized
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+        window.location.href = `/search?q=${encodeURIComponent(trimmed)}`;
+      }
       onNavigate?.();
       setPending(false);
     }, 300);
@@ -69,13 +84,26 @@ export function SearchBar({
         if (q.length >= 2) {
           // keep lastSubmitted in sync for submit path as well
           lastSubmitted.current = q;
-          router.push(`/search?q=${encodeURIComponent(q)}`);
+          if (!mountedRef.current) {
+            // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+            window.location.href = `/search?q=${encodeURIComponent(q)}`;
+            return;
+          }
+          try {
+            router.push(`/search?q=${encodeURIComponent(q)}`);
+          } catch {
+            // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+            window.location.href = `/search?q=${encodeURIComponent(q)}`;
+          }
           onNavigate?.();
         }
       }}
       className={cn("relative", compact ? "w-full" : "w-full")}
     >
-      <Search className="absolute end-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+      <Search
+        className="absolute end-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none"
+        suppressHydrationWarning
+      />
       <Input
         type="search"
         name="q"
@@ -102,7 +130,10 @@ export function SearchBar({
         )}
       />
       {pending && (
-        <Loader2 className="absolute start-3 top-1/2 -translate-y-1/2 size-4 animate-spin text-muted-foreground" />
+        <Loader2
+          className="absolute start-3 top-1/2 -translate-y-1/2 size-4 animate-spin text-muted-foreground"
+          suppressHydrationWarning
+        />
       )}
     </form>
   );

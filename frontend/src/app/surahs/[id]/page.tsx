@@ -7,7 +7,8 @@ import { AyahView } from "@/components/ayah-view";
 import { PaginationControls } from "@/components/pagination-controls";
 import { api } from "@/lib/api";
 
-const PAGE_SIZE = 50;
+// 20 avoids Next.js 2MB Data Cache limit (50 with morphology is ~2.2MB -> cache write fails)
+const PAGE_SIZE = 20;
 
 interface SurahPageProps {
   params: Promise<{ id: string }>;

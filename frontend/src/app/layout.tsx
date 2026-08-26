@@ -15,6 +15,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
+    // suppressHydrationWarning on html+body silences mismatches from:
+    // - next-themes (class attribute toggled after mount)
+    // - Dark Reader extension (injects data-darkreader-* / style on html/svg)
+    // Both are client-only and benign; test hydration in incognito to verify.
     <html
       lang="ar"
       dir="rtl"
@@ -22,6 +26,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
     >
       <head>
+        <meta name="darkreader-lock" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
           rel="preconnect"
@@ -34,7 +39,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <ThemeProvider>
           <SiteHeader />
           <main className="flex-1 mx-auto w-full max-w-5xl px-4 py-8">{children}</main>

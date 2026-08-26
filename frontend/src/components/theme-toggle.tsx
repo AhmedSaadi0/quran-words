@@ -15,39 +15,45 @@ export function ThemeToggle() {
     setMounted(true);
   }, []);
 
-  if (!mounted) {
-    return (
-      <Button
-        variant="ghost"
-        size="icon"
-        className="shrink-0"
-        aria-label="تبديل الثيم"
-        disabled
-      >
-        <Sun className="size-5" aria-hidden />
-      </Button>
-    );
-  }
-
-  const isDark = resolvedTheme === "dark";
+  const isDark = mounted ? resolvedTheme === "dark" : false;
 
   return (
     <Button
       variant="ghost"
       size="icon"
       className="shrink-0 relative"
-      aria-label={isDark ? "تفعيل الوضع الفاتح" : "تفعيل الوضع المظلم"}
-      title={isDark ? "تفعيل الوضع الفاتح" : "تفعيل الوضع المظلم"}
-      onClick={() => setTheme(isDark ? "light" : "dark")}
+      aria-label={
+        !mounted
+          ? "تبديل الثيم"
+          : isDark
+            ? "تفعيل الوضع الفاتح"
+            : "تفعيل الوضع المظلم"
+      }
+      title={
+        !mounted
+          ? undefined
+          : isDark
+            ? "تفعيل الوضع الفاتح"
+            : "تفعيل الوضع المظلم"
+      }
+      disabled={!mounted}
+      suppressHydrationWarning
+      onClick={
+        !mounted ? undefined : () => setTheme(isDark ? "light" : "dark")
+      }
     >
       <Sun
         className="size-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0"
         aria-hidden
+        suppressHydrationWarning
       />
-      <Moon
-        className="absolute size-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100"
-        aria-hidden
-      />
+      {!mounted ? null : (
+        <Moon
+          className="absolute size-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100"
+          aria-hidden
+          suppressHydrationWarning
+        />
+      )}
       <span className="sr-only">تبديل الثيم</span>
     </Button>
   );

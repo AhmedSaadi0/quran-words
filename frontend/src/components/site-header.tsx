@@ -15,7 +15,7 @@ export function SiteHeader({ showSearch = true }: { showSearch?: boolean }) {
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40">
       <div className="mx-auto flex h-14 max-w-5xl items-center gap-4 px-4">
         <Link href="/" className="flex items-center gap-2 font-semibold shrink-0">
-          <BookOpenText className="size-5" aria-hidden />
+          <BookOpenText className="size-5" aria-hidden suppressHydrationWarning />
           <span>كلمات القرآن</span>
         </Link>
 
@@ -48,7 +48,11 @@ export function SiteHeader({ showSearch = true }: { showSearch?: boolean }) {
             aria-expanded={isSearchOpen}
             onClick={() => setIsSearchOpen((v) => !v)}
           >
-            {isSearchOpen ? <X className="size-5" /> : <Search className="size-5" />}
+            {isSearchOpen ? (
+              <X className="size-5" suppressHydrationWarning />
+            ) : (
+              <Search className="size-5" suppressHydrationWarning />
+            )}
           </Button>
         )}
       </div>

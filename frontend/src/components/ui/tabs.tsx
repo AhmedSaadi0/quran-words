@@ -25,6 +25,7 @@ function TabsList({
   return (
     <TabsPrimitive.List
       data-slot="tabs-list"
+      suppressHydrationWarning
       className={cn(
         "bg-muted text-muted-foreground inline-flex h-9 w-fit items-center justify-center rounded-lg p-[3px]",
         className

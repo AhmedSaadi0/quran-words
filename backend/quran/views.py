@@ -25,7 +25,22 @@ class AyahViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = AyahSerializer
     filterset_fields = ["surah", "ayah"]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    search_fields = ["text_uthmani"]
+    search_fields = ["text_uthmani", "text_uthmani_plain"]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        q = self.request.query_params.get("q")
+        if q:
+            from core.utils import normalize_query
+            from django.db.models import Q
+
+            nq = normalize_query(q)
+            qs = qs.filter(
+                Q(text_uthmani__icontains=q)
+                | Q(text_uthmani__icontains=nq)
+                | Q(text_uthmani_plain__icontains=nq)
+            )
+        return qs
 
 
 class AyahWordsViewSet(viewsets.ReadOnlyModelViewSet):

@@ -77,7 +77,10 @@ export function RootCard({ root }: { root: RootItem }) {
           <Badge variant="outline" className="tabular-nums">
             {root.derivatives_count} مشتق
           </Badge>
-          <ArrowLeft className="size-4 ms-auto self-center opacity-0 transition-opacity group-hover:opacity-60" />
+          <ArrowLeft
+            className="size-4 ms-auto self-center opacity-0 transition-opacity group-hover:opacity-60"
+            suppressHydrationWarning
+          />
         </CardContent>
       </Card>
     </Link>
