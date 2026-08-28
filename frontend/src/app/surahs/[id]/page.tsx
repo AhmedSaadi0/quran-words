@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import type { Surah } from "@/lib/api";
-import { AyahView } from "@/components/ayah-view";
-import { PaginationControls } from "@/components/pagination-controls";
+import { SurahSidebar } from "@/components/surah-sidebar";
+import { SurahViewClient } from "@/components/surah-view-client";
 import { api } from "@/lib/api";
 
 // 20 avoids Next.js 2MB Data Cache limit (50 with morphology is ~2.2MB -> cache write fails)
@@ -24,7 +23,7 @@ export async function generateMetadata({
   return {
     title: surah ? `سورة ${surah.name_ar}` : `سورة ${id}`,
     description: surah
-      ? `آيات سورة ${surah.name_ar} مع تحليل صرفي لكل كلمة`
+      ? `آيات سورة ${surah.name_ar} مع تحليل صرفي لكل كلمة — الجزء ${surah.juz_start} · ${surah.ayah_count} آية`
       : undefined,
   };
 }
@@ -49,48 +48,19 @@ export default async function SurahPage({ params, searchParams }: SurahPageProps
   const next: Surah | undefined = surahs.find((s) => s.id === surahId + 1);
 
   return (
-    <div className="space-y-6">
-      <header className="space-y-2 text-center border-b pb-6">
-        <h1 className="font-quran text-4xl font-bold">سورة {surah.name_ar}</h1>
-        <p className="text-sm text-muted-foreground tabular-nums">
-          {surah.revelation_type} · {surah.ayah_count.toLocaleString("ar-EG")} آية ·
-          الجزء {surah.juz_start.toLocaleString("ar-EG")}
-        </p>
-
-        <nav className="flex items-center justify-center gap-3 pt-2 text-sm" aria-label="التنقل بين السور">
-          {prev && (
-            <Link href={`/surahs/${prev.id}`} className="underline-offset-2 hover:underline">
-              ← {prev.name_ar}
-            </Link>
-          )}
-          <span className="text-muted-foreground">|</span>
-          <Link href="/#roots" className="underline-offset-2 hover:underline text-muted-foreground">
-            كل السور
-          </Link>
-          <span className="text-muted-foreground">|</span>
-          {next && (
-            <Link href={`/surahs/${next.id}`} className="underline-offset-2 hover:underline">
-              {next.name_ar} →
-            </Link>
-          )}
-        </nav>
-        <p className="text-xs text-muted-foreground pt-1">
-          اضغط على أي كلمة لعرض تحليلها الصرفي.
-        </p>
-      </header>
-
-      <div className="space-y-4">
-        {ayat.results.map((ayah) => (
-          <AyahView key={ayah.id} ayah={ayah} />
-        ))}
+    <div className="flex gap-6 -mx-4">
+      <SurahSidebar surahs={surahs} currentId={surahId} />
+      <div className="flex-1 min-w-0 px-4">
+        <SurahViewClient
+          surah={surah}
+          ayat={ayat}
+          page={page}
+          pageSize={PAGE_SIZE}
+          surahId={surahId}
+          prev={prev}
+          next={next}
+        />
       </div>
-
-      <PaginationControls
-        page={page}
-        count={ayat.count}
-        pageSize={PAGE_SIZE}
-        basePath={`/surahs/${surahId}`}
-      />
     </div>
   );
 }

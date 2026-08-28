@@ -111,7 +111,8 @@ export function MorphPopover({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="font-quran text-2xl leading-relaxed px-0.5 rounded hover:bg-accent transition-colors cursor-pointer"
+          className="font-quran text-[1em] leading-[inherit] px-0.5 rounded hover:bg-accent transition-colors cursor-pointer"
+          style={{ fontSize: "1em" }}
         >
           {entry.word.text}
         </button>

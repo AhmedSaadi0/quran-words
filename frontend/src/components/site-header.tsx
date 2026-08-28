@@ -26,7 +26,7 @@ export function SiteHeader({ showSearch = true }: { showSearch?: boolean }) {
         )}
 
         <nav className="ms-auto flex items-center gap-4 text-sm text-muted-foreground">
-          <Link href="/surahs/1" className="hover:text-foreground transition-colors">
+          <Link href="/surahs" className="hover:text-foreground transition-colors">
             السور
           </Link>
           <Link href="/guide/morphology" className="hover:text-foreground transition-colors">
