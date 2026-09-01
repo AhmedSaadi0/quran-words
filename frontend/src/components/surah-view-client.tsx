@@ -8,12 +8,14 @@ import { AyahView } from "@/components/ayah-view";
 import { SurahJump } from "@/components/surah-jump";
 import { PaginationControls } from "@/components/pagination-controls";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useFontSize, useReadingProgress } from "@/hooks/use-reading-progress";
+import { SURAH_PAGES } from "@/lib/pages.generated";
 import { Minus, Plus } from "lucide-react";
 
 interface SurahViewClientProps {
   surah: Surah;
-  ayat: { results: AyahWithWords[]; count: number };
+  ayat: { results: AyahWithWords[]; count: number } | AyahWithWords[];
   page: number;
   pageSize: number;
   surahId: number;
@@ -24,7 +26,23 @@ interface SurahViewClientProps {
 export function SurahViewClient({ surah, ayat, page, pageSize, surahId, prev, next }: SurahViewClientProps) {
   const { size, setSize } = useFontSize();
   const { save } = useReadingProgress(surahId, page);
-  const totalPages = Math.max(1, Math.ceil(surah.ayah_count / pageSize));
+  // Defensive normalization: accept both AyahWithWords[] and Paginated shape
+  const ayatList: AyahWithWords[] = Array.isArray(ayat)
+    ? ayat
+    : Array.isArray((ayat as { results?: unknown })?.results)
+      ? (ayat as { results: AyahWithWords[] }).results
+      : Array.isArray((ayat as unknown as { results?: { results?: unknown } })?.results?.results)
+        ? ((ayat as unknown as { results: { results: AyahWithWords[] } }).results.results)
+        : [];
+  const ayatCount = Array.isArray(ayat) ? ayat.length : (ayat as { count?: number })?.count ?? ayatList.length;
+  const mushafPages = SURAH_PAGES[surahId] ?? [];
+  // Mushaf pages are true Madina pages for this surah; page prop is now page_number (e.g. 2..49 for Baqarah)
+  const isMushaf = mushafPages.length > 0;
+  const totalPages = isMushaf ? mushafPages.length : Math.max(1, Math.ceil(surah.ayah_count / pageSize));
+  const mushafIdx = isMushaf ? mushafPages.indexOf(page) : -1;
+  const currentMushafPage = isMushaf && mushafIdx >= 0 ? page : mushafPages[0];
+  const prevMushaf = isMushaf && mushafIdx > 0 ? mushafPages[mushafIdx - 1] : null;
+  const nextMushaf = isMushaf && mushafIdx >= 0 && mushafIdx < mushafPages.length - 1 ? mushafPages[mushafIdx + 1] : null;
 
   // keyboard navigation: ArrowLeft -> next, ArrowRight -> prev (RTL)
   useEffect(() => {
@@ -74,7 +92,7 @@ export function SurahViewClient({ surah, ayat, page, pageSize, surahId, prev, ne
     const els = document.querySelectorAll("[id^='ayah-']");
     els.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  }, [ayat.results, save]);
+  }, [ayatList, save]);
 
   const showBasmala = surahId !== 1 && surahId !== 9;
 
@@ -116,7 +134,13 @@ export function SurahViewClient({ surah, ayat, page, pageSize, surahId, prev, ne
         )}
 
         <div className="flex flex-wrap items-center justify-center gap-3 pt-4">
-          <SurahJump surahId={surahId} ayahCount={surah.ayah_count} currentPage={page} totalPages={totalPages} />
+          <SurahJump
+            surahId={surahId}
+            ayahCount={surah.ayah_count}
+            currentPage={isMushaf ? mushafIdx + 1 : page}
+            totalPages={totalPages}
+            mushafPages={isMushaf ? mushafPages : undefined}
+          />
           <div className="flex items-center gap-1 rounded-lg border p-1">
             <Button
               variant="ghost"
@@ -140,16 +164,59 @@ export function SurahViewClient({ surah, ayat, page, pageSize, surahId, prev, ne
           </div>
         </div>
 
-        <p className="text-xs text-muted-foreground pt-1">اضغط على أي كلمة لعرض تحليلها الصرفي · استخدم ← → للتنقل بين السور</p>
+        {mushafPages.length > 0 && (
+          <div className="flex flex-wrap items-center justify-center gap-1.5 pt-2">
+            <span className="text-xs text-muted-foreground">صفحات المصحف:</span>
+            {mushafPages.map((pn) => (
+              <Link key={pn} href={`/surahs/${surahId}?page=${pn}`}>
+                <Badge
+                  variant={pn === page ? "secondary" : "outline"}
+                  className={`tabular-nums text-xs ${pn === page ? "" : "hover:bg-accent"}`}
+                  aria-current={pn === page ? "page" : undefined}
+                >
+                  {pn.toLocaleString("ar-EG")}
+                </Badge>
+              </Link>
+            ))}
+          </div>
+        )}
+
+        <p className="text-xs text-muted-foreground pt-1">اضغط على أي كلمة لعرض تحليلها الصرفي · استخدم ← → للتنقل بين السور · صفحات المصحف مطابقة لطبعة المدينة</p>
       </header>
 
       <div className="space-y-4" style={{ fontSize: `${size}px` } as React.CSSProperties}>
-        {ayat.results.map((ayah) => (
+        {ayatList.map((ayah) => (
           <AyahView key={ayah.id} ayah={ayah} />
         ))}
       </div>
 
-      <PaginationControls page={page} count={ayat.count} pageSize={pageSize} basePath={`/surahs/${surahId}`} />
+      {isMushaf ? (
+        <nav className="flex items-center justify-center gap-3" aria-label="ترقيم صفحات المصحف">
+          {prevMushaf ? (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/surahs/${surahId}?page=${prevMushaf}`}>السابق (ص {prevMushaf.toLocaleString("ar-EG")})</Link>
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" disabled>
+              السابق
+            </Button>
+          )}
+          <span className="text-sm text-muted-foreground tabular-nums">
+            صفحة مصحف {currentMushafPage?.toLocaleString("ar-EG") ?? page.toLocaleString("ar-EG")} · {mushafIdx + 1} من {mushafPages.length}
+          </span>
+          {nextMushaf ? (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/surahs/${surahId}?page=${nextMushaf}`}>التالي (ص {nextMushaf.toLocaleString("ar-EG")})</Link>
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" disabled>
+              التالي
+            </Button>
+          )}
+        </nav>
+      ) : (
+        <PaginationControls page={page} count={ayatCount} pageSize={pageSize} basePath={`/surahs/${surahId}`} />
+      )}
     </div>
   );
 }

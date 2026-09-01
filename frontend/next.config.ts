@@ -13,6 +13,12 @@ const nextConfig: NextConfig = {
     // No remote images in this app; skip sharp requirement
     unoptimized: true,
   },
+  async redirects() {
+    return [
+      { source: "/pages", destination: "/surahs", permanent: false },
+      { source: "/pages/:num", destination: "/surahs", permanent: false },
+    ];
+  },
 };
 
 export default nextConfig;

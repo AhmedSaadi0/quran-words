@@ -5,9 +5,7 @@ import type { Surah } from "@/lib/api";
 import { SurahSidebar } from "@/components/surah-sidebar";
 import { SurahViewClient } from "@/components/surah-view-client";
 import { api } from "@/lib/api";
-
-// 20 avoids Next.js 2MB Data Cache limit (50 with morphology is ~2.2MB -> cache write fails)
-const PAGE_SIZE = 20;
+import { SURAH_PAGES } from "@/lib/pages.generated";
 
 interface SurahPageProps {
   params: Promise<{ id: string }>;
@@ -34,12 +32,26 @@ export default async function SurahPage({ params, searchParams }: SurahPageProps
   const surahId = parseInt(id, 10);
   if (!Number.isFinite(surahId) || surahId < 1 || surahId > 114) notFound();
 
-  const page = Math.max(1, parseInt(pageParam ?? "1", 10) || 1);
+  const mushafPages = SURAH_PAGES[surahId] ?? [];
+  const rawPage = parseInt(pageParam ?? "", 10);
+  const page =
+    mushafPages.length > 0
+      ? mushafPages.includes(rawPage)
+        ? rawPage
+        : mushafPages[0]
+      : Math.max(1, parseInt(pageParam ?? "1", 10) || 1);
 
-  const [surahs, ayat] = await Promise.all([
-    api.surahs(),
-    api.ayahWords({ surah: surahId, page_size: PAGE_SIZE, page }),
-  ]);
+  const surahs = await api.surahs();
+  // Direct ORM: bypass offset pagination, fetch exact Mushaf page for this surah
+  // Defensive: backend returns AyahWithWords[] direct; handle both array and Paginated shapes
+  const rawList = (await api.mushafAyahWords({ surah: surahId, page_number: page })) as unknown;
+  const ayatList: import("@/lib/api").AyahWithWords[] = Array.isArray(rawList)
+    ? (rawList as import("@/lib/api").AyahWithWords[])
+    : Array.isArray((rawList as { results?: unknown }).results)
+      ? ((rawList as { results: import("@/lib/api").AyahWithWords[] }).results)
+      : [];
+  const ayat = { results: ayatList, count: mushafPages.length };
+  const pageSize = 1;
 
   const surah: Surah | undefined = surahs.find((s) => s.id === surahId);
   if (!surah) notFound();
@@ -55,7 +67,7 @@ export default async function SurahPage({ params, searchParams }: SurahPageProps
           surah={surah}
           ayat={ayat}
           page={page}
-          pageSize={PAGE_SIZE}
+          pageSize={pageSize}
           surahId={surahId}
           prev={prev}
           next={next}

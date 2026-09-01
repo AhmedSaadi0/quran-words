@@ -89,7 +89,7 @@ SURAH_INFO = [
     ("التحريم", "At-Tahrim", 12, "مدنية", 28),
     ("الملك", "Al-Mulk", 30, "مكية", 29),
     ("القلم", "Al-Qalam", 52, "مكية", 29),
-    ("الحاقة", "Al-Haqqah", 28, "مكية", 29),
+    ("الحاقة", "Al-Haqqah", 52, "مكية", 29),
     ("المعارج", "Al-Ma'arij", 44, "مكية", 29),
     ("نوح", "Nuh", 28, "مكية", 29),
     ("الجن", "Al-Jinn", 28, "مكية", 29),
@@ -101,7 +101,7 @@ SURAH_INFO = [
     ("النبأ", "An-Naba", 40, "مكية", 30),
     ("النازعات", "An-Nazi'at", 46, "مكية", 30),
     ("عبس", "Abasa", 42, "مكية", 30),
-    ("التكوير", "At-Takwir", 17, "مكية", 30),
+    ("التكوير", "At-Takwir", 29, "مكية", 30),
     ("الانفطار", "Al-Infitar", 19, "مكية", 30),
     ("المطففين", "Al-Mutaffifin", 36, "مكية", 30),
     ("الانشقاق", "Al-Inshiqaq", 25, "مكية", 30),
@@ -174,6 +174,13 @@ def create_database():
         text_uthmani TEXT,
         text_imlaei TEXT,
         word_count INTEGER,
+        juz INTEGER,
+        hizb INTEGER,
+        rub_el_hizb INTEGER,
+        page_number INTEGER,
+        manzil_number INTEGER,
+        ruku_number INTEGER,
+        sajdah_number INTEGER,
         FOREIGN KEY (surah) REFERENCES surahs(id),
         UNIQUE(surah, ayah)
     )""")
@@ -262,6 +269,12 @@ def create_database():
     c.execute("CREATE INDEX idx_words_translation ON words(translation)")
     c.execute("CREATE INDEX idx_ayat_surah ON ayat(surah)")
     c.execute("CREATE INDEX idx_ayat_surah_ayah ON ayat(surah, ayah)")
+    c.execute("CREATE INDEX idx_ayat_juz ON ayat(juz)")
+    c.execute("CREATE INDEX idx_ayat_hizb ON ayat(hizb)")
+    c.execute("CREATE INDEX idx_ayat_rub ON ayat(rub_el_hizb)")
+    c.execute("CREATE INDEX idx_ayat_page ON ayat(page_number)")
+    c.execute("CREATE INDEX idx_ayat_juz_hizb ON ayat(juz, hizb)")
+    c.execute("CREATE INDEX idx_ayat_juz_hizb_rub ON ayat(juz, hizb, rub_el_hizb)")
     c.execute("CREATE INDEX idx_word_ayah_word ON word_ayah(word_id)")
     c.execute("CREATE INDEX idx_word_ayah_ayah ON word_ayah(ayah_id)")
     c.execute("CREATE INDEX idx_word_ayah_location ON word_ayah(location)")

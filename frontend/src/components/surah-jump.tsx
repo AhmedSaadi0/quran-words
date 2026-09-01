@@ -5,23 +5,25 @@ import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import { getPageForSurahAyah } from "@/lib/quran-meta";
 
 interface SurahJumpProps {
   surahId: number;
   ayahCount: number;
   currentPage: number;
   totalPages: number;
+  mushafPages?: number[];
 }
 
-export function SurahJump({ surahId, ayahCount, currentPage, totalPages }: SurahJumpProps) {
+export function SurahJump({ surahId, ayahCount, currentPage, totalPages, mushafPages }: SurahJumpProps) {
   const router = useRouter();
   const [ayah, setAyah] = useState("");
 
   function go() {
     const n = parseInt(ayah, 10);
     if (!Number.isFinite(n) || n < 1 || n > ayahCount) return;
-    // compute page containing ayah n (20 per page)
-    const targetPage = Math.ceil(n / 20);
+    // For Mushaf mode, map ayah to its true page_number; else 20 per page fallback
+    const targetPage = mushafPages?.length ? getPageForSurahAyah(surahId, n) : Math.ceil(n / 20);
     if (targetPage !== currentPage) {
       router.push(`/surahs/${surahId}?page=${targetPage}#ayah-${n}`);
     } else {

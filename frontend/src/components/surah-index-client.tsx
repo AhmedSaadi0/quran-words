@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { stripDiacritics, normalizeAr } from "@/lib/normalize";
-import { JUZ_BOUNDARIES, getSurahsForJuz, getPageRange, getPageBlocks, TOTAL_PAGES } from "@/lib/quran-meta";
+import { JUZ_BOUNDARIES, getSurahsForJuz, getPageRange, getPageBlocks, TOTAL_PAGES, isTrueMushafPages } from "@/lib/quran-meta";
+import { MUSH_PAGE_BOUNDARIES } from "@/lib/pages.generated";
 import { Search, LayoutGrid, List } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -228,8 +229,9 @@ export function SurahIndexClient({ surahs }: SurahIndexClientProps) {
         <TabsContent value="pages" className="space-y-4 mt-4">
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground leading-relaxed">
-              تقسيم الصفحات 604 مُحسب حسابياً من قاعدة البيانات (10.3 آية/صفحة في المتوسط) لتوفير تنقل 604 كامل محلياً
-              بدون جلب خارجي. عند إضافة `page_number` لكل آية في `ayat` سيُستبدل التقسيم بالمطابق لطبعة المدينة.
+              {isTrueMushafPages()
+                ? `تقسيم صفحات مصحف المدينة الحقيقي (604 صفحات) — كل صفحة مطابقة لطبعة المدينة من قاعدة البيانات (من Quran.com API v4).`
+                : `تقسيم الصفحات 604 مُحسب حسابياً (10.3 آية/صفحة) كاحتياطي — سيُستبدل تلقائياً بالحقيقي عند وجود pages.generated.ts.`}
             </p>
             <div className="flex flex-wrap gap-1.5">
               {pageBlocks.map((b) => (
@@ -248,28 +250,32 @@ export function SurahIndexClient({ surahs }: SurahIndexClientProps) {
 
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2">
             {currentBlock.pages.map((p) => {
-              const r = getPageRange(p);
+              // Use true Madina boundaries when available via pages.generated.ts
+              const mush = MUSH_PAGE_BOUNDARIES.find((m) => m.page_number === p);
+              const r = mush ? { start: { surah: mush.start_surah, ayah: mush.start_ayah }, end: { surah: mush.end_surah, ayah: mush.end_ayah } } : getPageRange(p);
               const startSurah = surahs.find((s) => s.id === r.start.surah);
               const endSurah = surahs.find((s) => s.id === r.end.surah);
+              const count = mush?.ayah_count;
               return (
                 <Link
                   key={p}
-                  href={`/surahs/${r.start.surah}#ayah-${r.start.ayah}`}
+                  href={`/surahs/${r.start.surah}?page=${p}`}
                   className="rounded-lg border p-3 hover:bg-accent/40 transition-colors space-y-1"
                 >
-                  <p className="text-xs text-muted-foreground tabular-nums">صفحة {p.toLocaleString("ar-EG")}</p>
+                  <p className="text-xs text-muted-foreground tabular-nums">صفحة {p.toLocaleString("ar-EG")} {count ? `· ${count.toLocaleString("ar-EG")} آيات` : ""}</p>
                   <p className="font-quran text-sm leading-relaxed truncate">
                     {startSurah?.name_ar} {r.start.ayah.toLocaleString("ar-EG")}
                     {r.end.surah !== r.start.surah || r.end.ayah !== r.start.ayah
                       ? ` → ${endSurah?.name_ar} ${r.end.ayah.toLocaleString("ar-EG")}`
                       : ""}
                   </p>
+                  <p className="text-[11px] text-muted-foreground">مصحف المدينة · {startSurah?.name_ar}</p>
                 </Link>
               );
             })}
           </div>
           <p className="text-[11px] text-muted-foreground/70 text-center">
-            إجمالي {TOTAL_PAGES.toLocaleString("ar-EG")} صفحة · كل صفحة ≈ 10 آيات
+            إجمالي {TOTAL_PAGES.toLocaleString("ar-EG")} صفحة · كل صفحة مطابقة لمصحف المدينة
           </p>
         </TabsContent>
       </Tabs>

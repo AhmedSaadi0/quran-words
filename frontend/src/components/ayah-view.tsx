@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type { AyahWithWords } from "@/lib/api";
 import { MorphPopover } from "@/components/morph-tooltip";
 import { Button } from "@/components/ui/button";
@@ -51,13 +52,23 @@ export function AyahView({ ayah }: { ayah: AyahWithWords }) {
     >
       {/* شريط علوي موحد */}
       <div className="flex items-center justify-between gap-4 border-b pb-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="inline-flex items-center justify-center size-7 rounded-full bg-primary text-primary-foreground text-xs tabular-nums font-bold">
             {ayah.ayah.toLocaleString("ar-EG")}
           </span>
           <span className="text-xs text-muted-foreground tabular-nums">
             {ayah.surah_name} : {ayah.ayah.toLocaleString("ar-EG")}
           </span>
+          {ayah.page_number ? (
+            <Link
+              href={`/surahs/${ayah.surah}?page=${ayah.page_number}`}
+              className="text-[10px] leading-none px-1.5 py-0.5 rounded border tabular-nums hover:bg-accent"
+            >
+              ص {ayah.page_number.toLocaleString("ar-EG")}
+            </Link>
+          ) : null}
+          {ayah.juz ? <span className="text-[10px] text-muted-foreground tabular-nums">ج {ayah.juz.toLocaleString("ar-EG")}</span> : null}
+          {ayah.hizb ? <span className="text-[10px] text-muted-foreground tabular-nums">ح {ayah.hizb.toLocaleString("ar-EG")}</span> : null}
         </div>
         <div className="flex items-center gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
           <Button variant="ghost" size="icon" className="size-7" onClick={copyText} aria-label="نسخ نص الآية">

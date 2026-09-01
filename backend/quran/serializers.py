@@ -33,6 +33,13 @@ class AyahSerializer(serializers.ModelSerializer):
             "text_uthmani",
             "text_imlaei",
             "word_count",
+            "juz",
+            "hizb",
+            "rub_el_hizb",
+            "page_number",
+            "manzil_number",
+            "ruku_number",
+            "sajdah_number",
         ]
 
 
@@ -51,6 +58,13 @@ class AyahWithWordsSerializer(serializers.ModelSerializer):
             "ayah",
             "text_uthmani",
             "word_count",
+            "juz",
+            "hizb",
+            "rub_el_hizb",
+            "page_number",
+            "manzil_number",
+            "ruku_number",
+            "sajdah_number",
             "words",
         ]
 
