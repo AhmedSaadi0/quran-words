@@ -1,3 +1,4 @@
 data/*.db filter=lfs diff=lfs merge=lfs -text
 data/*.parquet filter=lfs diff=lfs merge=lfs -text
 data/** filter=lfs diff=lfs merge=lfs -text
+data/db-manifest.json -filter -diff -merge

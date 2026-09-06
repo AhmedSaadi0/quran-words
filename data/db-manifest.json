@@ -1,3 +1,16 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:61c78358598ba97a750e16ea7c7163f16e2998c8c755c1b87407aba90d4faac8
-size 639
+{
+  "latestVersionCode": 2,
+  "latestVersionName": "v2",
+  "downloadUrl": "https://github.com/AhmedSaadi0/quran-words/releases/download/db-v2/quran_words.db.zip",
+  "compressedSize": 31265939,
+  "uncompressedSize": 115445760,
+  "sha256": "dc4bf67ed94b5ba0264c8ef6cbeb4ccccb68db0905b013181feb0dd9591a438f",
+  "publishedAt": "2026-09-06T05:42:22Z",
+  "minAppVersionCode": 3,
+  "releaseNotesAr": [
+    "اضافة الصفحات",
+    "اضافة الاحزاب لكل سورة",
+    "بدء اعتماد اصدارات لقاعدة البيانات"
+  ],
+  "releasePageUrl": "https://github.com/AhmedSaadi0/quran-words/releases/tag/db-v2"
+}
