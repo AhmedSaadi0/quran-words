@@ -1,16 +1,18 @@
 {
-  "latestVersionCode": 2,
-  "latestVersionName": "v2",
-  "downloadUrl": "https://github.com/AhmedSaadi0/quran-words/releases/download/db-v2/quran_words.db.zip",
-  "compressedSize": 31265939,
-  "uncompressedSize": 115445760,
-  "sha256": "dc4bf67ed94b5ba0264c8ef6cbeb4ccccb68db0905b013181feb0dd9591a438f",
-  "publishedAt": "2026-09-06T05:42:22Z",
+  "latestVersionCode": 3,
+  "latestVersionName": "v3",
+  "downloadUrl": "https://github.com/AhmedSaadi0/quran-words/releases/download/db-v3/quran_words.db.zip",
+  "compressedSize": 32419161,
+  "uncompressedSize": 118628352,
+  "sha256": "d30f63d07fbae23cbb3d2fd22e755e7240bc6dddb18dce2ef4f8c321ca891e2b",
+  "publishedAt": "2026-09-07T11:11:33Z",
   "minAppVersionCode": 3,
   "releaseNotesAr": [
-    "اضافة الصفحات",
-    "اضافة الاحزاب لكل سورة",
-    "بدء اعتماد اصدارات لقاعدة البيانات"
+    "تسريع جذري لشاشة الجذور: من ~39 ثانية إلى ~1.1 مللي ثانية",
+    "إضافة أعمدة محسوبة مسبقاً في جدول الجذور: occurrences_count و masadir_count و derivatives_count",
+    "إضافة 9 فهارس جديدة لتسريع تفاصيل الجذر والكلمات والآيات والمعاني",
+    "تسريع تفاصيل الجذر: المعاني من ~6ms إلى ~0.1ms والمشتقات إلى ~0.03ms",
+    "لا تغيير في النص القرآني — البيانات ثابتة وتم التحقق من سلامتها بالكامل"
   ],
-  "releasePageUrl": "https://github.com/AhmedSaadi0/quran-words/releases/tag/db-v2"
+  "releasePageUrl": "https://github.com/AhmedSaadi0/quran-words/releases/tag/db-v3"
 }
